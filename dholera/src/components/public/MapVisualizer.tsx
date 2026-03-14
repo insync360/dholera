@@ -3,6 +3,11 @@ import { Parcel } from '../../lib/types';
 import { Crosshair, ZoomIn, ZoomOut } from 'lucide-react';
 import { Button } from '../ui/button';
 
+interface PolygonEntry {
+  polygon: any;
+  parcel: Parcel;
+}
+
 interface MapVisualizerProps {
   parcels: Parcel[];
   selectedParcel: Parcel | null;
@@ -20,7 +25,9 @@ export function MapVisualizer({
 }: MapVisualizerProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<any>(null);
-  const [polygons, setPolygons] = useState<any[]>([]);
+  const [polygonEntries, setPolygonEntries] = useState<PolygonEntry[]>([]);
+  const onParcelClickRef = useRef(onParcelClick);
+  onParcelClickRef.current = onParcelClick;
 
   useEffect(() => {
     if (!mapRef.current || !window.google || !window.google.maps) return;
@@ -36,22 +43,20 @@ export function MapVisualizer({
     });
 
     setMap(googleMap);
-
-    return () => {
-      polygons.forEach(p => p.setMap(null));
-    };
   }, []);
 
+  // Parcels effect: create polygons and fit bounds when parcel data changes
   useEffect(() => {
     if (!map || !window.google || !window.google.maps) return;
 
-    polygons.forEach(p => p.setMap(null));
+    // Clear old polygons
+    polygonEntries.forEach(entry => entry.polygon.setMap(null));
 
-    // Auto-fit map to parcel bounds
+    // Fit map to all parcel bounds
     if (parcels.length > 0) {
       const bounds = new window.google.maps.LatLngBounds();
       let hasValidCoords = false;
-      
+
       parcels.forEach(parcel => {
         if (parcel.coordinates && parcel.coordinates.length > 0) {
           parcel.coordinates.forEach(coord => {
@@ -60,41 +65,40 @@ export function MapVisualizer({
           });
         }
       });
-      
+
       if (hasValidCoords) {
         map.fitBounds(bounds, { padding: 50 });
       }
     }
 
-    const newPolygons = parcels.map((parcel) => {
-      const getColor = (status: string) => {
-        switch (status) {
-          case 'Available':
-            return { fill: '#22C55E', stroke: '#16A34A' };
-          case 'Reserved':
-            return { fill: '#FACC15', stroke: '#EAB308' };
-          case 'Sold':
-            return { fill: '#6B7280', stroke: '#4B5563' };
-          default:
-            return { fill: '#0B64D6', stroke: '#0847A6' };
-        }
-      };
+    const getColor = (status: string) => {
+      switch (status) {
+        case 'Available':
+          return { fill: '#22C55E', stroke: '#16A34A' };
+        case 'Reserved':
+          return { fill: '#FACC15', stroke: '#EAB308' };
+        case 'Sold':
+          return { fill: '#6B7280', stroke: '#4B5563' };
+        default:
+          return { fill: '#0B64D6', stroke: '#0847A6' };
+      }
+    };
 
+    const newEntries = parcels.map((parcel) => {
       const colors = getColor(parcel.status);
-      const isSelected = selectedParcel?.id === parcel.id;
 
       const polygon = new window.google.maps.Polygon({
         paths: parcel.coordinates,
         strokeColor: colors.stroke,
         strokeOpacity: 1,
-        strokeWeight: isSelected ? 3 : 2,
+        strokeWeight: 2,
         fillColor: colors.fill,
-        fillOpacity: isSelected ? 0.5 : 0.35,
+        fillOpacity: 0.35,
         map: map,
       });
 
       polygon.addListener('click', () => {
-        onParcelClick(parcel);
+        onParcelClickRef.current(parcel);
       });
 
       polygon.addListener('mouseover', () => {
@@ -105,7 +109,8 @@ export function MapVisualizer({
       });
 
       polygon.addListener('mouseout', () => {
-        if (!isSelected) {
+        const isCurrentlySelected = polygon.get('isSelected');
+        if (!isCurrentlySelected) {
           polygon.setOptions({
             fillOpacity: 0.35,
             strokeWeight: 2,
@@ -113,14 +118,50 @@ export function MapVisualizer({
         }
       });
 
-      // Note: Parcel labels can be added using google.maps.marker.AdvancedMarkerElement
-      // when a valid Maps API key is configured. For now, click parcels to view details.
-
-      return polygon;
+      return { polygon, parcel };
     });
 
-    setPolygons(newPolygons);
-  }, [map, parcels, selectedParcel]);
+    setPolygonEntries(newEntries);
+  }, [map, parcels]);
+
+  // Selection effect: update styling and zoom to selected parcel
+  useEffect(() => {
+    if (!map || !window.google || !window.google.maps) return;
+
+    // Update polygon styling based on selection
+    polygonEntries.forEach(({ polygon, parcel }) => {
+      const isSelected = selectedParcel?.id === parcel.id;
+      polygon.set('isSelected', isSelected);
+      polygon.setOptions({
+        strokeWeight: isSelected ? 3 : 2,
+        fillOpacity: isSelected ? 0.5 : 0.35,
+      });
+    });
+
+    if (selectedParcel && selectedParcel.coordinates?.length > 0) {
+      // Zoom to selected parcel
+      const bounds = new window.google.maps.LatLngBounds();
+      selectedParcel.coordinates.forEach(coord => {
+        bounds.extend(new window.google.maps.LatLng(coord.lat, coord.lng));
+      });
+      map.fitBounds(bounds, { padding: 100 });
+    } else if (!selectedParcel && polygonEntries.length > 0) {
+      // Selection cleared — fit all parcels
+      const bounds = new window.google.maps.LatLngBounds();
+      let hasValidCoords = false;
+      polygonEntries.forEach(({ parcel }) => {
+        if (parcel.coordinates && parcel.coordinates.length > 0) {
+          parcel.coordinates.forEach(coord => {
+            bounds.extend(new window.google.maps.LatLng(coord.lat, coord.lng));
+            hasValidCoords = true;
+          });
+        }
+      });
+      if (hasValidCoords) {
+        map.fitBounds(bounds, { padding: 50 });
+      }
+    }
+  }, [map, selectedParcel, polygonEntries]);
 
   const handleZoomIn = () => {
     if (map) {
