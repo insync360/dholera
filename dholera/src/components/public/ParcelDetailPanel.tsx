@@ -39,19 +39,19 @@ export function ParcelDetailPanel({ parcel, onClose, onMoreDetails, onRequestVis
   };
 
   return (
-    <div className="fixed inset-x-0 bottom-0 md:absolute md:top-[73px] md:right-0 md:bottom-0 md:left-auto md:w-96 bg-white shadow-2xl z-30 overflow-y-auto max-h-[80vh] md:max-h-full rounded-t-xl md:rounded-none transition-transform duration-300 ease-in-out">
-      <div className="sticky top-0 bg-white border-b border-border p-4 flex items-center justify-between z-10 rounded-t-xl md:rounded-none">
+    <div className="fixed inset-x-0 bottom-0 md:absolute md:top-[73px] md:right-0 md:bottom-0 md:left-auto md:w-96 bg-white shadow-2xl z-30 flex flex-col max-h-[75vh] md:max-h-full rounded-t-xl md:rounded-none transition-transform duration-300 ease-in-out">
+      <div className="shrink-0 bg-white border-b border-border p-4 flex items-center justify-between z-10 rounded-t-xl md:rounded-none">
         <h3>Parcel Details</h3>
         <Button variant="ghost" size="icon" onClick={onClose}>
           <X className="h-5 w-5" />
         </Button>
       </div>
 
-      <div className="p-4 space-y-4">
+      <div className="overflow-y-auto flex-1 p-4 space-y-4">
         <div className="flex items-start justify-between">
           <div>
             <div className="text-sm text-muted-foreground">Parcel ID</div>
-            <div className="text-2xl font-bold">{parcel.parcel_id}</div>
+            <div className="text-xl md:text-2xl font-bold break-all">{parcel.parcel_id}</div>
           </div>
           <Badge className={getStatusColor(parcel.status)}>{parcel.status}</Badge>
         </div>
