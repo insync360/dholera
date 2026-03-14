@@ -85,7 +85,7 @@ export function UserAuthDialog({ isOpen, onClose, onLoginSuccess }: UserAuthDial
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) { resetForm(); onClose(); } }}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-w-[400px]">
         <DialogHeader>
           <DialogTitle>Welcome to GAP Group</DialogTitle>
           <DialogDescription>Sign in or create an account to continue</DialogDescription>

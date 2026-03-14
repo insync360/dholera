@@ -80,9 +80,9 @@ export function TopBar({
 
             {publicUser ? (
               <div className="flex items-center gap-2 ml-2 pl-2 border-l border-border">
-                <User className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm text-foreground">{publicUser.email}</span>
-                <Button variant="ghost" size="sm" onClick={onPublicLogout}>
+                <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                <span className="text-sm text-foreground truncate max-w-[150px]">{publicUser.email}</span>
+                <Button variant="ghost" size="sm" onClick={onPublicLogout} className="shrink-0">
                   <LogOut className="h-4 w-4 mr-1" />
                   Logout
                 </Button>
@@ -97,9 +97,16 @@ export function TopBar({
         )}
 
         {isMobile && (
-           <Button variant="outline" size="icon" onClick={onFilterClick}>
-            <Filter className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            {!publicUser && (
+              <Button variant="ghost" size="icon" onClick={onUserAuthClick}>
+                <LogIn className="h-4 w-4" />
+              </Button>
+            )}
+            <Button variant="outline" size="icon" onClick={onFilterClick}>
+              <Filter className="h-4 w-4" />
+            </Button>
+          </div>
         )}
       </div>
 
@@ -116,9 +123,9 @@ export function TopBar({
 
           {publicUser ? (
             <>
-              <div className="flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground">
-                <User className="h-4 w-4" />
-                {publicUser.email}
+              <div className="flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground min-w-0">
+                <User className="h-4 w-4 shrink-0" />
+                <span className="truncate">{publicUser.email}</span>
               </div>
               <Button variant="ghost" className="w-full justify-start" onClick={() => {
                 onPublicLogout?.();
