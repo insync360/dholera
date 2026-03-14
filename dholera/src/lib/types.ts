@@ -51,3 +51,14 @@ export interface PublicUser {
   id: string;
   email: string;
 }
+
+export interface SiteVisitRequest {
+  id: string;
+  user_id: string;
+  parcel_id: string;
+  name: string;
+  phone: string;
+  requirements?: string;
+  status: string;
+  created_at: string;
+}

@@ -1,4 +1,4 @@
-import { Parcel, DataVersion, UploadHistory, User, PublicUser } from './types';
+import { Parcel, DataVersion, UploadHistory, User, PublicUser, SiteVisitRequest } from './types';
 import { supabase } from './supabase';
 
 class ApiError extends Error {
@@ -436,6 +436,28 @@ export const publicAuthApi = {
       id: dhoUser.id,
       email: dhoUser.email,
     };
+  },
+};
+
+export const siteVisitApi = {
+  create: async (request: Omit<SiteVisitRequest, 'id' | 'status' | 'created_at'>): Promise<SiteVisitRequest> => {
+    const { data, error } = await supabase
+      .from('site_visit_requests')
+      .insert({
+        user_id: request.user_id,
+        parcel_id: request.parcel_id,
+        name: request.name,
+        phone: request.phone,
+        requirements: request.requirements || null,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      throw new ApiError(400, error.message);
+    }
+
+    return data as SiteVisitRequest;
   },
 };
 

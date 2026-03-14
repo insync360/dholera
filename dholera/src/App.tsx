@@ -4,6 +4,7 @@ import { TopBar } from './components/public/TopBar';
 import { FilterDrawer } from './components/public/FilterDrawer';
 import { ParcelDetailPanel } from './components/public/ParcelDetailPanel';
 import { ParcelDetailModal } from './components/public/ParcelDetailModal';
+import { SiteVisitDialog } from './components/public/SiteVisitDialog';
 import { MapVisualizer } from './components/public/MapVisualizer';
 import { DemoMapVisualizer } from './components/public/DemoMapVisualizer';
 import { LoginScreen } from './components/auth/LoginScreen';
@@ -28,6 +29,10 @@ export default function App() {
   // Public user auth
   const [publicUser, setPublicUser] = useState<PublicUser | null>(null);
   const [showAuthDialog, setShowAuthDialog] = useState(false);
+
+  // Site visit request flow
+  const [showSiteVisitDialog, setShowSiteVisitDialog] = useState(false);
+  const [pendingSiteVisit, setPendingSiteVisit] = useState(false);
 
   // Public view state
   const [parcels, setParcels] = useState<Parcel[]>([]);
@@ -260,10 +265,23 @@ export default function App() {
     }
   };
 
+  const handleRequestVisit = () => {
+    if (publicUser) {
+      setShowSiteVisitDialog(true);
+    } else {
+      setPendingSiteVisit(true);
+      setShowAuthDialog(true);
+    }
+  };
+
   const handlePublicLoginSuccess = (user: PublicUser) => {
     setPublicUser(user);
     setShowAuthDialog(false);
     toast.success('Logged in successfully!');
+    if (pendingSiteVisit) {
+      setPendingSiteVisit(false);
+      setShowSiteVisitDialog(true);
+    }
   };
 
   const handlePublicLogout = async () => {
@@ -480,18 +498,32 @@ export default function App() {
           parcel={selectedParcel}
           onClose={() => setSelectedParcel(null)}
           onMoreDetails={() => setShowDetailModal(true)}
+          onRequestVisit={handleRequestVisit}
         />
 
         <ParcelDetailModal
           parcel={selectedParcel}
           isOpen={showDetailModal}
           onClose={() => setShowDetailModal(false)}
+          onRequestVisit={handleRequestVisit}
         />
       </div>
       
+      {selectedParcel && publicUser && (
+        <SiteVisitDialog
+          isOpen={showSiteVisitDialog}
+          onClose={() => setShowSiteVisitDialog(false)}
+          parcel={selectedParcel}
+          publicUser={publicUser}
+        />
+      )}
+
       <UserAuthDialog
         isOpen={showAuthDialog}
-        onClose={() => setShowAuthDialog(false)}
+        onClose={() => {
+          setShowAuthDialog(false);
+          setPendingSiteVisit(false);
+        }}
         onLoginSuccess={handlePublicLoginSuccess}
       />
       <Toaster />

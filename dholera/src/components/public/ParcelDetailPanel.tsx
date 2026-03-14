@@ -10,9 +10,10 @@ interface ParcelDetailPanelProps {
   parcel: Parcel | null;
   onClose: () => void;
   onMoreDetails: () => void;
+  onRequestVisit: () => void;
 }
 
-export function ParcelDetailPanel({ parcel, onClose, onMoreDetails }: ParcelDetailPanelProps) {
+export function ParcelDetailPanel({ parcel, onClose, onMoreDetails, onRequestVisit }: ParcelDetailPanelProps) {
   if (!parcel) return null;
 
   const getStatusColor = (status: string) => {
@@ -116,7 +117,7 @@ export function ParcelDetailPanel({ parcel, onClose, onMoreDetails }: ParcelDeta
         </div>
 
         <div className="space-y-2 pt-2">
-          <Button className="w-full" size="lg">
+          <Button className="w-full" size="lg" onClick={onRequestVisit}>
             <Calendar className="h-4 w-4 mr-2" />
             Request Site Visit
           </Button>

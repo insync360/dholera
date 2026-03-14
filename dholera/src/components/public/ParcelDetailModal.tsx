@@ -3,21 +3,16 @@ import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Parcel } from '../../lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
-import { Input } from '../ui/input';
-import { Label } from '../ui/label';
-import { Textarea } from '../ui/textarea';
 import { toast } from 'sonner';
-import { useState } from 'react';
 
 interface ParcelDetailModalProps {
   parcel: Parcel | null;
   isOpen: boolean;
   onClose: () => void;
+  onRequestVisit: () => void;
 }
 
-export function ParcelDetailModal({ parcel, isOpen, onClose }: ParcelDetailModalProps) {
-  const [showVisitForm, setShowVisitForm] = useState(false);
-
+export function ParcelDetailModal({ parcel, isOpen, onClose, onRequestVisit }: ParcelDetailModalProps) {
   if (!parcel) return null;
 
   const getStatusColor = (status: string) => {
@@ -46,12 +41,6 @@ export function ParcelDetailModal({ parcel, isOpen, onClose }: ParcelDetailModal
 
   const handleBookmark = () => {
     toast.success('Parcel bookmarked!');
-  };
-
-  const handleVisitSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    toast.success('Site visit request submitted successfully!');
-    setShowVisitForm(false);
   };
 
   return (
@@ -162,52 +151,16 @@ export function ParcelDetailModal({ parcel, isOpen, onClose }: ParcelDetailModal
             </div>
           </div>
 
-          {!showVisitForm ? (
-            <div className="flex gap-2">
-              <Button className="flex-1" size="lg" onClick={() => setShowVisitForm(true)}>
-                <Calendar className="h-4 w-4 mr-2" />
-                Schedule a Site Visit
-              </Button>
-              <Button variant="outline" size="lg">
-                <Download className="h-4 w-4 mr-2" />
-                Download Brochure
-              </Button>
-            </div>
-          ) : (
-            <div className="border border-border rounded-lg p-4">
-              <h4 className="mb-4">Schedule Site Visit</h4>
-              <form onSubmit={handleVisitSubmit} className="space-y-4">
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="name">Full Name</Label>
-                    <Input id="name" placeholder="Enter your name" required />
-                  </div>
-                  <div>
-                    <Label htmlFor="phone">Phone Number</Label>
-                    <Input id="phone" type="tel" placeholder="Enter your phone" required />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="email">Email Address</Label>
-                  <Input id="email" type="email" placeholder="Enter your email" required />
-                </div>
-                <div>
-                  <Label htmlFor="date">Preferred Date</Label>
-                  <Input id="date" type="date" required />
-                </div>
-                <div>
-                  <Label htmlFor="message">Message (Optional)</Label>
-                  <Textarea id="message" placeholder="Any specific requirements..." rows={3} />
-                </div>
-                <div className="flex gap-2">
-                  <Button type="submit" className="flex-1">Submit Request</Button>
-                  <Button type="button" variant="outline" onClick={() => setShowVisitForm(false)}>
-                    Cancel
-                  </Button>
-                </div>
-              </form>
-            </div>
-          )}
+          <div className="flex gap-2">
+            <Button className="flex-1" size="lg" onClick={onRequestVisit}>
+              <Calendar className="h-4 w-4 mr-2" />
+              Schedule a Site Visit
+            </Button>
+            <Button variant="outline" size="lg">
+              <Download className="h-4 w-4 mr-2" />
+              Download Brochure
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
