@@ -46,3 +46,8 @@ export interface User {
   email: string;
   role: UserRole;
 }
+
+export interface PublicUser {
+  id: string;
+  email: string;
+}

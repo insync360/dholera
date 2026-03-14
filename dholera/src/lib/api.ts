@@ -1,4 +1,4 @@
-import { Parcel, DataVersion, UploadHistory, User } from './types';
+import { Parcel, DataVersion, UploadHistory, User, PublicUser } from './types';
 import { supabase } from './supabase';
 
 class ApiError extends Error {
@@ -287,30 +287,19 @@ export const authApi = {
       throw new ApiError(401, error.message);
     }
 
-    // Get user profile to get role, create if doesn't exist
+    // Get user profile to verify admin/editor role
     const { data: profiles } = await supabase
       .from('user_profiles')
       .select('role')
       .eq('id', data.user.id);
 
-    let role: string = 'Viewer';
-
-    // If profile doesn't exist, create it
+    // If no profile exists, this user is not an admin — sign out and reject
     if (!profiles || profiles.length === 0) {
-      const { data: newProfile } = await supabase
-        .from('user_profiles')
-        .insert({
-          id: data.user.id,
-          email: data.user.email || '',
-          role: 'Admin', // First user is admin
-        })
-        .select('role')
-        .single();
-      
-      role = newProfile?.role || 'Admin';
-    } else {
-      role = profiles[0]?.role || 'Viewer';
+      await supabase.auth.signOut();
+      throw new ApiError(403, 'Not authorized as admin');
     }
+
+    const role = profiles[0]?.role || 'Viewer';
 
     return {
       user: {
@@ -345,6 +334,107 @@ export const authApi = {
     return {
       email: user.email || '',
       role: role as User['role'],
+    };
+  },
+};
+
+export const publicAuthApi = {
+  signUp: async (email: string, password: string): Promise<{ user: PublicUser; token: string }> => {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+
+    if (error) {
+      throw new ApiError(400, error.message);
+    }
+
+    // Register in dholera_users table
+    if (data.user?.id) {
+      const { error: insertError } = await supabase
+        .from('dholera_users')
+        .insert({ id: data.user.id, email: data.user.email || email });
+
+      if (insertError) {
+        console.warn('Failed to insert into dholera_users:', insertError.message);
+      }
+    }
+
+    return {
+      user: {
+        id: data.user?.id || '',
+        email: data.user?.email || email,
+      },
+      token: data.session?.access_token || '',
+    };
+  },
+
+  login: async (email: string, password: string): Promise<{ user: PublicUser; token: string }> => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      throw new ApiError(401, error.message);
+    }
+
+    // Ensure user exists in dholera_users (self-healing for pre-migration users)
+    if (data.user?.id) {
+      const { data: existing } = await supabase
+        .from('dholera_users')
+        .select('id')
+        .eq('id', data.user.id)
+        .maybeSingle();
+
+      if (!existing) {
+        const { error: insertError } = await supabase
+          .from('dholera_users')
+          .insert({ id: data.user.id, email: data.user.email || email });
+
+        if (insertError) {
+          console.warn('Failed to insert into dholera_users:', insertError.message);
+        }
+      }
+    }
+
+    return {
+      user: {
+        id: data.user?.id || '',
+        email: data.user?.email || email,
+      },
+      token: data.session?.access_token || '',
+    };
+  },
+
+  logout: async (): Promise<void> => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      throw new ApiError(500, error.message);
+    }
+  },
+
+  getCurrentPublicUser: async (): Promise<PublicUser | null> => {
+    const { data: { user }, error } = await supabase.auth.getUser();
+
+    if (error || !user) {
+      return null;
+    }
+
+    // Only return as public user if they exist in dholera_users
+    const { data: dhoUser } = await supabase
+      .from('dholera_users')
+      .select('id, email')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (!dhoUser) {
+      return null;
+    }
+
+    return {
+      id: dhoUser.id,
+      email: dhoUser.email,
     };
   },
 };

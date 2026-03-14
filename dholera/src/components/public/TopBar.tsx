@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Search, Filter, RotateCcw, Menu, X } from 'lucide-react';
+import { Search, Filter, RotateCcw, Menu, X, LogIn, LogOut, User } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
+import { PublicUser } from '../../lib/types';
 
 interface TopBarProps {
   onFilterClick: () => void;
@@ -11,6 +12,9 @@ interface TopBarProps {
   onMenuClick?: () => void;
   isMobile?: boolean;
   isDemoMode?: boolean;
+  publicUser?: PublicUser | null;
+  onUserAuthClick?: () => void;
+  onPublicLogout?: () => void;
 }
 
 export function TopBar({
@@ -21,6 +25,9 @@ export function TopBar({
   onMenuClick,
   isMobile = false,
   isDemoMode: _isDemoMode = false,
+  publicUser = null,
+  onUserAuthClick,
+  onPublicLogout,
 }: TopBarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -65,11 +72,27 @@ export function TopBar({
               <Filter className="h-4 w-4 mr-2" />
               Filters
             </Button>
-            
+
             <Button variant="ghost" onClick={onResetView}>
               <RotateCcw className="h-4 w-4 mr-2" />
               Reset View
             </Button>
+
+            {publicUser ? (
+              <div className="flex items-center gap-2 ml-2 pl-2 border-l border-border">
+                <User className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm text-foreground">{publicUser.email}</span>
+                <Button variant="ghost" size="sm" onClick={onPublicLogout}>
+                  <LogOut className="h-4 w-4 mr-1" />
+                  Logout
+                </Button>
+              </div>
+            ) : (
+              <Button variant="default" onClick={onUserAuthClick} className="ml-2">
+                <LogIn className="h-4 w-4 mr-2" />
+                Login
+              </Button>
+            )}
           </div>
         )}
 
@@ -90,6 +113,30 @@ export function TopBar({
             <RotateCcw className="h-4 w-4 mr-2" />
             Reset View
           </Button>
+
+          {publicUser ? (
+            <>
+              <div className="flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground">
+                <User className="h-4 w-4" />
+                {publicUser.email}
+              </div>
+              <Button variant="ghost" className="w-full justify-start" onClick={() => {
+                onPublicLogout?.();
+                setIsMobileMenuOpen(false);
+              }}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Logout
+              </Button>
+            </>
+          ) : (
+            <Button variant="ghost" className="w-full justify-start" onClick={() => {
+              onUserAuthClick?.();
+              setIsMobileMenuOpen(false);
+            }}>
+              <LogIn className="h-4 w-4 mr-2" />
+              Login
+            </Button>
+          )}
         </div>
       )}
     </div>

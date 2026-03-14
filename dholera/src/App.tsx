@@ -12,8 +12,9 @@ import { Dashboard } from './components/admin/Dashboard';
 import { UploadKML } from './components/admin/UploadKML';
 import { ParcelEditor } from './components/admin/ParcelEditor';
 import { VersionHistory } from './components/admin/VersionHistory';
-import { Parcel, FilterOptions, User, DataVersion, UploadHistory } from './lib/types';
-import { parcelApi, uploadApi, versionApi, authApi, ApiError } from './lib/api';
+import { UserAuthDialog } from './components/auth/UserAuthDialog';
+import { Parcel, FilterOptions, User, PublicUser, DataVersion, UploadHistory } from './lib/types';
+import { parcelApi, uploadApi, versionApi, authApi, publicAuthApi, ApiError } from './lib/api';
 import { DHOLERA_MAP_CENTER, DHOLERA_MAP_ZOOM, DEFAULT_FILTERS } from './lib/constants';
 import { toast } from 'sonner';
 
@@ -23,7 +24,11 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [mapsLoaded, setMapsLoaded] = useState(false);
   const [useDemoMode, setUseDemoMode] = useState(false);
-  
+
+  // Public user auth
+  const [publicUser, setPublicUser] = useState<PublicUser | null>(null);
+  const [showAuthDialog, setShowAuthDialog] = useState(false);
+
   // Public view state
   const [parcels, setParcels] = useState<Parcel[]>([]);
   const [filteredParcels, setFilteredParcels] = useState<Parcel[]>([]);
@@ -54,6 +59,13 @@ export default function App() {
     return () => window.removeEventListener('hashchange', checkHash);
   }, []);
   
+  // Restore public user session on mount
+  useEffect(() => {
+    publicAuthApi.getCurrentPublicUser().then((user) => {
+      if (user) setPublicUser(user);
+    });
+  }, []);
+
   // Loading and error states
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -204,6 +216,14 @@ export default function App() {
   const handleLogin = async (email: string, password: string) => {
     try {
       const { user: userData, token } = await authApi.login(email, password);
+
+      // Defense in depth: verify role even though API already blocks non-admins
+      if (userData.role !== 'Admin' && userData.role !== 'Editor') {
+        await authApi.logout();
+        toast.error('Not authorized to access admin panel');
+        return;
+      }
+
       localStorage.setItem('auth_token', token);
       setUser(userData);
       setView('admin');
@@ -211,10 +231,14 @@ export default function App() {
       await loadAdminData();
       toast.success(`Welcome, ${userData.role}!`);
     } catch (err) {
-      const errorMessage = err instanceof ApiError
-        ? 'Invalid credentials. Please try again.'
-        : 'Login failed. Please check your connection.';
-      toast.error(errorMessage);
+      if (err instanceof ApiError && err.status === 403) {
+        toast.error('Not authorized as admin');
+      } else {
+        const errorMessage = err instanceof ApiError
+          ? 'Invalid credentials. Please try again.'
+          : 'Login failed. Please check your connection.';
+        toast.error(errorMessage);
+      }
     }
   };
 
@@ -233,6 +257,22 @@ export default function App() {
       setUser(null);
       setView('public');
       history.replaceState(null, '', window.location.pathname);
+    }
+  };
+
+  const handlePublicLoginSuccess = (user: PublicUser) => {
+    setPublicUser(user);
+    setShowAuthDialog(false);
+    toast.success('Logged in successfully!');
+  };
+
+  const handlePublicLogout = async () => {
+    try {
+      await publicAuthApi.logout();
+      setPublicUser(null);
+      toast.info('Logged out');
+    } catch {
+      setPublicUser(null);
     }
   };
 
@@ -369,6 +409,9 @@ export default function App() {
           onSearchChange={setSearchQuery}
           isDemoMode={useDemoMode}
           isMobile={isMobile}
+          publicUser={publicUser}
+          onUserAuthClick={() => setShowAuthDialog(true)}
+          onPublicLogout={handlePublicLogout}
         />
 
         <div className="absolute top-[73px] bottom-0 left-0 right-0">
@@ -446,6 +489,11 @@ export default function App() {
         />
       </div>
       
+      <UserAuthDialog
+        isOpen={showAuthDialog}
+        onClose={() => setShowAuthDialog(false)}
+        onLoginSuccess={handlePublicLoginSuccess}
+      />
       <Toaster />
     </>
   );
