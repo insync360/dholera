@@ -4,6 +4,7 @@ import { TopBar } from './components/public/TopBar';
 import { FilterDrawer } from './components/public/FilterDrawer';
 import { ParcelDetailPanel } from './components/public/ParcelDetailPanel';
 import { ParcelDetailModal } from './components/public/ParcelDetailModal';
+import { UserDashboard } from './components/public/UserDashboard';
 import { SiteVisitDialog } from './components/public/SiteVisitDialog';
 import { MapVisualizer } from './components/public/MapVisualizer';
 import { DemoMapVisualizer } from './components/public/DemoMapVisualizer';
@@ -15,7 +16,7 @@ import { ParcelEditor } from './components/admin/ParcelEditor';
 import { VersionHistory } from './components/admin/VersionHistory';
 import { UserAuthDialog } from './components/auth/UserAuthDialog';
 import { Parcel, FilterOptions, User, PublicUser, DataVersion, UploadHistory } from './lib/types';
-import { parcelApi, uploadApi, versionApi, authApi, publicAuthApi, ApiError } from './lib/api';
+import { parcelApi, uploadApi, versionApi, authApi, publicAuthApi, wishlistApi, ApiError } from './lib/api';
 import { DHOLERA_MAP_CENTER, DHOLERA_MAP_ZOOM, DEFAULT_FILTERS } from './lib/constants';
 import { toast } from 'sonner';
 
@@ -33,6 +34,12 @@ export default function App() {
   // Site visit request flow
   const [showSiteVisitDialog, setShowSiteVisitDialog] = useState(false);
   const [pendingSiteVisit, setPendingSiteVisit] = useState(false);
+
+  // Dashboard + wishlist
+  const [showDashboard, setShowDashboard] = useState(false);
+  const [pendingWishlist, setPendingWishlist] = useState(false);
+  const [wishlistedParcelIds, setWishlistedParcelIds] = useState<Set<string>>(new Set());
+  const [wishlistLoading, setWishlistLoading] = useState(false);
 
   // Public view state
   const [parcels, setParcels] = useState<Parcel[]>([]);
@@ -70,6 +77,17 @@ export default function App() {
       if (user) setPublicUser(user);
     });
   }, []);
+
+  // Load wishlisted parcel IDs when public user changes
+  useEffect(() => {
+    if (publicUser) {
+      wishlistApi.getByUser(publicUser.id).then((items) => {
+        setWishlistedParcelIds(new Set(items.map(w => w.parcel_id)));
+      }).catch(console.error);
+    } else {
+      setWishlistedParcelIds(new Set());
+    }
+  }, [publicUser]);
 
   // Loading and error states
   const [isLoading, setIsLoading] = useState(true);
@@ -274,6 +292,69 @@ export default function App() {
     }
   };
 
+  const handleDashboardOpen = () => {
+    if (publicUser) {
+      setShowDashboard(true);
+    } else {
+      setShowAuthDialog(true);
+    }
+  };
+
+  const handleToggleWishlist = async () => {
+    if (!selectedParcel) return;
+
+    if (!publicUser) {
+      setPendingWishlist(true);
+      setShowAuthDialog(true);
+      return;
+    }
+
+    const parcelId = selectedParcel.parcel_id;
+    const isCurrentlyWishlisted = wishlistedParcelIds.has(parcelId);
+
+    setWishlistLoading(true);
+    try {
+      if (isCurrentlyWishlisted) {
+        await wishlistApi.remove(publicUser.id, parcelId);
+        setWishlistedParcelIds(prev => {
+          const next = new Set(prev);
+          next.delete(parcelId);
+          return next;
+        });
+        toast.success('Removed from wishlist');
+      } else {
+        await wishlistApi.add(publicUser.id, parcelId);
+        setWishlistedParcelIds(prev => new Set(prev).add(parcelId));
+        toast.success('Added to wishlist!');
+      }
+    } catch (err) {
+      toast.error('Failed to update wishlist');
+      console.error(err);
+    } finally {
+      setWishlistLoading(false);
+    }
+  };
+
+  const handleViewParcelFromDashboard = (parcel: Parcel) => {
+    setShowDashboard(false);
+    setSelectedParcel(parcel);
+  };
+
+  const handleRemoveWishlistFromDashboard = async (parcelId: string) => {
+    if (!publicUser) return;
+    try {
+      await wishlistApi.remove(publicUser.id, parcelId);
+      setWishlistedParcelIds(prev => {
+        const next = new Set(prev);
+        next.delete(parcelId);
+        return next;
+      });
+      toast.success('Removed from wishlist');
+    } catch {
+      toast.error('Failed to remove from wishlist');
+    }
+  };
+
   const handlePublicLoginSuccess = (user: PublicUser) => {
     setPublicUser(user);
     setShowAuthDialog(false);
@@ -282,15 +363,29 @@ export default function App() {
       setPendingSiteVisit(false);
       setShowSiteVisitDialog(true);
     }
+    if (pendingWishlist && selectedParcel) {
+      setPendingWishlist(false);
+      // Add to wishlist after login
+      wishlistApi.add(user.id, selectedParcel.parcel_id).then(() => {
+        setWishlistedParcelIds(prev => new Set(prev).add(selectedParcel.parcel_id));
+        toast.success('Added to wishlist!');
+      }).catch(() => {
+        toast.error('Failed to add to wishlist');
+      });
+    }
   };
 
   const handlePublicLogout = async () => {
     try {
       await publicAuthApi.logout();
       setPublicUser(null);
+      setShowDashboard(false);
+      setWishlistedParcelIds(new Set());
       toast.info('Logged out');
     } catch {
       setPublicUser(null);
+      setShowDashboard(false);
+      setWishlistedParcelIds(new Set());
     }
   };
 
@@ -430,6 +525,7 @@ export default function App() {
           publicUser={publicUser}
           onUserAuthClick={() => setShowAuthDialog(true)}
           onPublicLogout={handlePublicLogout}
+          onDashboardClick={handleDashboardOpen}
         />
 
         <div className="absolute top-[73px] bottom-0 left-0 right-0">
@@ -499,6 +595,9 @@ export default function App() {
           onClose={() => setSelectedParcel(null)}
           onMoreDetails={() => setShowDetailModal(true)}
           onRequestVisit={handleRequestVisit}
+          onToggleWishlist={handleToggleWishlist}
+          isWishlisted={selectedParcel ? wishlistedParcelIds.has(selectedParcel.parcel_id) : false}
+          wishlistLoading={wishlistLoading}
         />
 
         <ParcelDetailModal
@@ -506,6 +605,9 @@ export default function App() {
           isOpen={showDetailModal}
           onClose={() => setShowDetailModal(false)}
           onRequestVisit={handleRequestVisit}
+          onToggleWishlist={handleToggleWishlist}
+          isWishlisted={selectedParcel ? wishlistedParcelIds.has(selectedParcel.parcel_id) : false}
+          wishlistLoading={wishlistLoading}
         />
       </div>
       
@@ -518,11 +620,23 @@ export default function App() {
         />
       )}
 
+      {publicUser && (
+        <UserDashboard
+          isOpen={showDashboard}
+          onClose={() => setShowDashboard(false)}
+          publicUser={publicUser}
+          parcels={parcels}
+          onViewParcel={handleViewParcelFromDashboard}
+          onRemoveWishlist={handleRemoveWishlistFromDashboard}
+        />
+      )}
+
       <UserAuthDialog
         isOpen={showAuthDialog}
         onClose={() => {
           setShowAuthDialog(false);
           setPendingSiteVisit(false);
+          setPendingWishlist(false);
         }}
         onLoginSuccess={handlePublicLoginSuccess}
       />

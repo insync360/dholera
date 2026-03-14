@@ -62,3 +62,10 @@ export interface SiteVisitRequest {
   status: string;
   created_at: string;
 }
+
+export interface WishlistItem {
+  id: string;
+  user_id: string;
+  parcel_id: string;
+  created_at: string;
+}

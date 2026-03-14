@@ -1,4 +1,4 @@
-import { Download, Share2, Printer, Bookmark, Calendar, MapPin, FileText } from 'lucide-react';
+import { Download, Share2, Printer, Heart, Calendar, MapPin, FileText } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Parcel } from '../../lib/types';
@@ -10,9 +10,12 @@ interface ParcelDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   onRequestVisit: () => void;
+  onToggleWishlist?: () => void;
+  isWishlisted?: boolean;
+  wishlistLoading?: boolean;
 }
 
-export function ParcelDetailModal({ parcel, isOpen, onClose, onRequestVisit }: ParcelDetailModalProps) {
+export function ParcelDetailModal({ parcel, isOpen, onClose, onRequestVisit, onToggleWishlist, isWishlisted = false, wishlistLoading = false }: ParcelDetailModalProps) {
   if (!parcel) return null;
 
   const getStatusColor = (status: string) => {
@@ -39,10 +42,6 @@ export function ParcelDetailModal({ parcel, isOpen, onClose, onRequestVisit }: P
     toast.success('Opening print dialog...');
   };
 
-  const handleBookmark = () => {
-    toast.success('Parcel bookmarked!');
-  };
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -59,8 +58,14 @@ export function ParcelDetailModal({ parcel, isOpen, onClose, onRequestVisit }: P
               <Button variant="ghost" size="icon" onClick={handlePrint}>
                 <Printer className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="icon" onClick={handleBookmark}>
-                <Bookmark className="h-4 w-4" />
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onToggleWishlist}
+                disabled={wishlistLoading}
+                className={isWishlisted ? 'text-rose-500' : ''}
+              >
+                <Heart className={`h-4 w-4 ${isWishlisted ? 'fill-current' : ''}`} />
               </Button>
             </div>
           </DialogTitle>

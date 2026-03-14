@@ -1,4 +1,4 @@
-import { Parcel, DataVersion, UploadHistory, User, PublicUser, SiteVisitRequest } from './types';
+import { Parcel, DataVersion, UploadHistory, User, PublicUser, SiteVisitRequest, WishlistItem } from './types';
 import { supabase } from './supabase';
 
 class ApiError extends Error {
@@ -458,6 +458,72 @@ export const siteVisitApi = {
     }
 
     return data as SiteVisitRequest;
+  },
+
+  getByUser: async (userId: string): Promise<SiteVisitRequest[]> => {
+    const { data, error } = await supabase
+      .from('site_visit_requests')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw new ApiError(500, error.message);
+    }
+
+    return (data || []) as SiteVisitRequest[];
+  },
+};
+
+export const wishlistApi = {
+  add: async (userId: string, parcelId: string): Promise<WishlistItem> => {
+    const { data, error } = await supabase
+      .from('wishlists')
+      .insert({ user_id: userId, parcel_id: parcelId })
+      .select()
+      .single();
+
+    if (error) {
+      // Handle duplicate gracefully
+      if (error.code === '23505') {
+        const { data: existing } = await supabase
+          .from('wishlists')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('parcel_id', parcelId)
+          .single();
+        return existing as WishlistItem;
+      }
+      throw new ApiError(400, error.message);
+    }
+
+    return data as WishlistItem;
+  },
+
+  remove: async (userId: string, parcelId: string): Promise<void> => {
+    const { error } = await supabase
+      .from('wishlists')
+      .delete()
+      .eq('user_id', userId)
+      .eq('parcel_id', parcelId);
+
+    if (error) {
+      throw new ApiError(400, error.message);
+    }
+  },
+
+  getByUser: async (userId: string): Promise<WishlistItem[]> => {
+    const { data, error } = await supabase
+      .from('wishlists')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw new ApiError(500, error.message);
+    }
+
+    return (data || []) as WishlistItem[];
   },
 };
 

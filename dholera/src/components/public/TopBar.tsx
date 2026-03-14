@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Filter, RotateCcw, Menu, X, LogIn, LogOut, User } from 'lucide-react';
+import { Search, Filter, RotateCcw, Menu, X, LogIn, LogOut, LayoutDashboard } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { PublicUser } from '../../lib/types';
@@ -15,6 +15,7 @@ interface TopBarProps {
   publicUser?: PublicUser | null;
   onUserAuthClick?: () => void;
   onPublicLogout?: () => void;
+  onDashboardClick?: () => void;
 }
 
 export function TopBar({
@@ -28,6 +29,7 @@ export function TopBar({
   publicUser = null,
   onUserAuthClick,
   onPublicLogout,
+  onDashboardClick,
 }: TopBarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -80,8 +82,10 @@ export function TopBar({
 
             {publicUser ? (
               <div className="flex items-center gap-2 ml-2 pl-2 border-l border-border">
-                <User className="h-4 w-4 text-muted-foreground shrink-0" />
-                <span className="text-sm text-foreground truncate max-w-[150px]">{publicUser.email}</span>
+                <Button variant="outline" size="sm" onClick={onDashboardClick} className="shrink-0">
+                  <LayoutDashboard className="h-4 w-4 mr-1" />
+                  Dashboard
+                </Button>
                 <Button variant="ghost" size="sm" onClick={onPublicLogout} className="shrink-0">
                   <LogOut className="h-4 w-4 mr-1" />
                   Logout
@@ -98,7 +102,11 @@ export function TopBar({
 
         {isMobile && (
           <div className="flex items-center gap-1">
-            {!publicUser && (
+            {publicUser ? (
+              <Button variant="ghost" size="icon" onClick={onDashboardClick}>
+                <LayoutDashboard className="h-4 w-4" />
+              </Button>
+            ) : (
               <Button variant="ghost" size="icon" onClick={onUserAuthClick}>
                 <LogIn className="h-4 w-4" />
               </Button>
@@ -123,10 +131,13 @@ export function TopBar({
 
           {publicUser ? (
             <>
-              <div className="flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground min-w-0">
-                <User className="h-4 w-4 shrink-0" />
-                <span className="truncate">{publicUser.email}</span>
-              </div>
+              <Button variant="ghost" className="w-full justify-start" onClick={() => {
+                onDashboardClick?.();
+                setIsMobileMenuOpen(false);
+              }}>
+                <LayoutDashboard className="h-4 w-4 mr-2" />
+                Dashboard
+              </Button>
               <Button variant="ghost" className="w-full justify-start" onClick={() => {
                 onPublicLogout?.();
                 setIsMobileMenuOpen(false);

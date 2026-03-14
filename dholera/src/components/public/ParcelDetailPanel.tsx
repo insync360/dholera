@@ -1,4 +1,4 @@
-import { X, Share2, FileText, MapPin, Maximize2, Calendar } from 'lucide-react';
+import { X, Share2, FileText, MapPin, Maximize2, Calendar, Heart } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Parcel } from '../../lib/types';
@@ -11,9 +11,12 @@ interface ParcelDetailPanelProps {
   onClose: () => void;
   onMoreDetails: () => void;
   onRequestVisit: () => void;
+  onToggleWishlist?: () => void;
+  isWishlisted?: boolean;
+  wishlistLoading?: boolean;
 }
 
-export function ParcelDetailPanel({ parcel, onClose, onMoreDetails, onRequestVisit }: ParcelDetailPanelProps) {
+export function ParcelDetailPanel({ parcel, onClose, onMoreDetails, onRequestVisit, onToggleWishlist, isWishlisted = false, wishlistLoading = false }: ParcelDetailPanelProps) {
   if (!parcel) return null;
 
   const getStatusColor = (status: string) => {
@@ -120,6 +123,15 @@ export function ParcelDetailPanel({ parcel, onClose, onMoreDetails, onRequestVis
           <Button className="w-full" size="lg" onClick={onRequestVisit}>
             <Calendar className="h-4 w-4 mr-2" />
             Request Site Visit
+          </Button>
+          <Button
+            variant="outline"
+            className={`w-full ${isWishlisted ? 'text-rose-500 border-rose-200 bg-rose-50 hover:bg-rose-100' : ''}`}
+            onClick={onToggleWishlist}
+            disabled={wishlistLoading}
+          >
+            <Heart className={`h-4 w-4 mr-2 ${isWishlisted ? 'fill-current' : ''}`} />
+            {wishlistLoading ? 'Updating...' : isWishlisted ? 'Wishlisted' : 'Add to Wishlist'}
           </Button>
           <div className="grid grid-cols-2 gap-2">
             <Button variant="outline" onClick={handleShare}>
