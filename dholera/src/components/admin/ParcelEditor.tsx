@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { Save, Undo, MapPin } from 'lucide-react';
+import { useState, useMemo, useRef } from 'react';
+import { Save, Undo, MapPin, Palette } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 import { Input } from '../ui/input';
@@ -49,7 +49,10 @@ function ParcelMapPreview({ parcel, allParcels }: { parcel: Parcel | null; allPa
     }).join(' ') + ' Z';
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string, customColor?: string) => {
+    if (customColor) {
+      return { fill: customColor, stroke: customColor };
+    }
     switch (status) {
       case 'Available': return { fill: '#22C55E', stroke: '#16A34A' };
       case 'Reserved': return { fill: '#FACC15', stroke: '#EAB308' };
@@ -75,7 +78,7 @@ function ParcelMapPreview({ parcel, allParcels }: { parcel: Parcel | null; allPa
       <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
         {parcelsToRender.map((p) => {
           if (!p.coordinates?.length) return null;
-          const colors = getStatusColor(p.status);
+          const colors = getStatusColor(p.status, p.color);
           const isSelected = parcel?.id === p.id;
           return (
             <path
@@ -123,6 +126,72 @@ function ParcelMapPreview({ parcel, allParcels }: { parcel: Parcel | null; allPa
               <span>Sold</span>
             </div>
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const PRESET_COLORS = [
+  '#22C55E', '#16A34A', '#15803D',  // greens
+  '#3B82F6', '#2563EB', '#1D4ED8',  // blues
+  '#EF4444', '#DC2626', '#B91C1C',  // reds
+  '#F97316', '#EA580C', '#C2410C',  // oranges
+  '#FACC15', '#EAB308', '#CA8A04',  // yellows
+  '#A855F7', '#9333EA', '#7E22CE',  // purples
+  '#EC4899', '#DB2777', '#BE185D',  // pinks
+  '#6B7280', '#4B5563', '#374151',  // grays
+];
+
+function ParcelColorPicker({ color, onChange }: { color?: string; onChange: (color: string) => void }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  return (
+    <div className="space-y-2 mt-1">
+      <div className="flex flex-wrap gap-1.5">
+        {PRESET_COLORS.map((c) => (
+          <button
+            key={c}
+            type="button"
+            className={`w-7 h-7 rounded-md border-2 transition-all hover:scale-110 ${
+              color === c ? 'border-foreground ring-1 ring-foreground scale-110' : 'border-transparent'
+            }`}
+            style={{ backgroundColor: c }}
+            onClick={() => onChange(c)}
+            title={c}
+          />
+        ))}
+        {/* Custom color button */}
+        <button
+          type="button"
+          className={`w-7 h-7 rounded-md border-2 border-dashed border-gray-300 flex items-center justify-center hover:border-gray-400 transition-colors ${
+            color && !PRESET_COLORS.includes(color) ? 'ring-1 ring-foreground' : ''
+          }`}
+          style={color && !PRESET_COLORS.includes(color) ? { backgroundColor: color, borderStyle: 'solid' } : {}}
+          onClick={() => inputRef.current?.click()}
+          title="Custom color"
+        >
+          {(!color || PRESET_COLORS.includes(color)) && <Palette className="h-3.5 w-3.5 text-gray-400" />}
+        </button>
+        <input
+          ref={inputRef}
+          type="color"
+          className="sr-only"
+          value={color || '#22C55E'}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      </div>
+      {color && (
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 rounded border" style={{ backgroundColor: color }} />
+          <span className="text-xs text-muted-foreground font-mono">{color}</span>
+          <button
+            type="button"
+            className="text-xs text-muted-foreground hover:text-foreground ml-auto"
+            onClick={() => onChange('')}
+          >
+            Reset to default
+          </button>
         </div>
       )}
     </div>
@@ -225,6 +294,7 @@ export function ParcelEditor({ parcels, onParcelUpdate }: ParcelEditorProps) {
                       <TableHead>Parcel ID</TableHead>
                       <TableHead>Area</TableHead>
                       <TableHead>Price</TableHead>
+                      <TableHead>Color</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead></TableHead>
                     </TableRow>
@@ -235,6 +305,13 @@ export function ParcelEditor({ parcels, onParcelUpdate }: ParcelEditorProps) {
                         <TableCell className="font-medium">{parcel.parcel_id}</TableCell>
                         <TableCell>{parcel.area_sq_m.toLocaleString()}</TableCell>
                         <TableCell>₹{(parcel.price / 100000).toFixed(1)}L</TableCell>
+                        <TableCell>
+                          <div
+                            className="w-5 h-5 rounded border border-gray-200"
+                            style={{ backgroundColor: parcel.color || '#22C55E' }}
+                            title={parcel.color || 'Default (status-based)'}
+                          />
+                        </TableCell>
                         <TableCell>
                           <Badge className={getStatusColor(parcel.status)}>
                             {parcel.status}
@@ -317,6 +394,14 @@ export function ParcelEditor({ parcels, onParcelUpdate }: ParcelEditorProps) {
                         <SelectItem value="Sold">Sold</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+
+                  <div>
+                    <Label>Map Color</Label>
+                    <ParcelColorPicker
+                      color={editedParcel?.color}
+                      onChange={(color) => handleFieldChange('color', color)}
+                    />
                   </div>
 
                   <div>

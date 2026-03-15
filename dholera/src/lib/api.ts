@@ -23,6 +23,7 @@ function transformParcel(row: Record<string, unknown>): Parcel {
     description: (row.description as string) || '',
     landmark_distance: row.landmark_distance as string | undefined,
     size_category: row.size_category as Parcel['size_category'],
+    color: (row.color as string) || undefined,
   };
 }
 
@@ -94,6 +95,7 @@ export const parcelApi = {
     if (parcel.description !== undefined) updateData.description = parcel.description;
     if (parcel.landmark_distance !== undefined) updateData.landmark_distance = parcel.landmark_distance;
     if (parcel.size_category !== undefined) updateData.size_category = parcel.size_category;
+    if (parcel.color !== undefined) updateData.color = parcel.color || null;
     updateData.updated_at = new Date().toISOString();
 
     const { data, error } = await supabase

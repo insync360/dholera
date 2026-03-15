@@ -71,7 +71,10 @@ export function MapVisualizer({
       }
     }
 
-    const getColor = (status: string) => {
+    const getColor = (status: string, customColor?: string) => {
+      if (customColor) {
+        return { fill: customColor, stroke: customColor };
+      }
       switch (status) {
         case 'Available':
           return { fill: '#22C55E', stroke: '#16A34A' };
@@ -85,7 +88,7 @@ export function MapVisualizer({
     };
 
     const newEntries = parcels.map((parcel) => {
-      const colors = getColor(parcel.status);
+      const colors = getColor(parcel.status, parcel.color);
 
       const polygon = new window.google.maps.Polygon({
         paths: parcel.coordinates,

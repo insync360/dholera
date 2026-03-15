@@ -13,6 +13,7 @@ export interface Parcel {
   description: string;
   landmark_distance?: string;
   size_category: 'Small' | 'Medium' | 'Large';
+  color?: string;
 }
 
 export interface DataVersion {

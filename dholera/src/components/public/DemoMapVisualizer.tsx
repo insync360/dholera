@@ -72,7 +72,10 @@ export function DemoMapVisualizer({
     return points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ') + ' Z';
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string, customColor?: string) => {
+    if (customColor) {
+      return { fill: customColor, stroke: customColor };
+    }
     switch (status) {
       case 'Available':
         return { fill: '#22C55E', stroke: '#16A34A' };
@@ -125,7 +128,7 @@ export function DemoMapVisualizer({
         preserveAspectRatio="none"
       >
         {parcels.map((parcel) => {
-          const colors = getStatusColor(parcel.status);
+          const colors = getStatusColor(parcel.status, parcel.color);
           const isSelected = selectedParcel?.id === parcel.id;
           const center = getParcelCenter(parcel.coordinates);
 
