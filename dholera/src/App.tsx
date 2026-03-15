@@ -20,9 +20,21 @@ import { parcelApi, uploadApi, versionApi, authApi, publicAuthApi, wishlistApi, 
 import { DHOLERA_MAP_CENTER, DHOLERA_MAP_ZOOM, DEFAULT_FILTERS } from './lib/constants';
 import { toast } from 'sonner';
 
+function getViewFromPath(): { view: 'public' | 'login' | 'admin'; adminView: string } {
+  const path = window.location.pathname;
+  if (path === '/login') return { view: 'login', adminView: 'dashboard' };
+  if (path.startsWith('/admin')) {
+    const sub = path.replace('/admin/', '').replace('/admin', '');
+    const validSubs = ['dashboard', 'upload', 'editor', 'history', 'settings'];
+    return { view: 'admin', adminView: validSubs.includes(sub) ? sub : 'dashboard' };
+  }
+  return { view: 'public', adminView: 'dashboard' };
+}
+
 export default function App() {
-  const [view, setView] = useState<'public' | 'login' | 'admin'>('public');
-  const [adminView, setAdminView] = useState<string>('dashboard');
+  const initial = getViewFromPath();
+  const [view, setView] = useState<'public' | 'login' | 'admin'>(initial.view);
+  const [adminView, setAdminView] = useState<string>(initial.adminView);
   const [user, setUser] = useState<User | null>(null);
   const [mapsLoaded, setMapsLoaded] = useState(false);
   const [useDemoMode, setUseDemoMode] = useState(false);
@@ -59,18 +71,44 @@ export default function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Secret admin access via #admin hash
+  // Sync URL when view/adminView changes
   useEffect(() => {
-    const checkHash = () => {
-      if (window.location.hash === '#admin') {
-        setView('login');
-      }
+    let targetPath = '/';
+    if (view === 'login') targetPath = '/login';
+    else if (view === 'admin') targetPath = adminView === 'dashboard' ? '/admin' : `/admin/${adminView}`;
+
+    if (window.location.pathname !== targetPath) {
+      history.pushState(null, '', targetPath);
+    }
+  }, [view, adminView]);
+
+  // Handle browser back/forward
+  useEffect(() => {
+    const handlePopState = () => {
+      const { view: newView, adminView: newAdminView } = getViewFromPath();
+      setView(newView);
+      setAdminView(newAdminView);
     };
-    checkHash();
-    window.addEventListener('hashchange', checkHash);
-    return () => window.removeEventListener('hashchange', checkHash);
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
   }, []);
-  
+
+  // Restore admin session on mount if on /admin path
+  useEffect(() => {
+    if (view === 'admin') {
+      authApi.getCurrentUser().then((userData) => {
+        if (userData.role === 'Admin' || userData.role === 'Editor') {
+          setUser(userData);
+          loadAdminData();
+        } else {
+          setView('login');
+        }
+      }).catch(() => {
+        setView('login');
+      });
+    }
+  }, []);
+
   // Restore public user session on mount
   useEffect(() => {
     publicAuthApi.getCurrentPublicUser().then((user) => {
@@ -250,7 +288,6 @@ export default function App() {
       localStorage.setItem('auth_token', token);
       setUser(userData);
       setView('admin');
-      history.replaceState(null, '', window.location.pathname);
       await loadAdminData();
       toast.success(`Welcome, ${userData.role}!`);
     } catch (err) {
@@ -272,14 +309,12 @@ export default function App() {
       setUser(null);
       setView('public');
       setAdminView('dashboard');
-      history.replaceState(null, '', window.location.pathname);
       toast.info('Logged out successfully');
     } catch (err) {
       console.error('Logout error:', err);
       localStorage.removeItem('auth_token');
       setUser(null);
       setView('public');
-      history.replaceState(null, '', window.location.pathname);
     }
   };
 
@@ -478,7 +513,6 @@ export default function App() {
       <>
         <LoginScreen onLogin={handleLogin} onBack={() => {
           setView('public');
-          history.replaceState(null, '', window.location.pathname);
         }} />
         <Toaster />
       </>
