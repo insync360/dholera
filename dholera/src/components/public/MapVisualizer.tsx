@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { Parcel } from '../../lib/types';
-import { Crosshair, ZoomIn, ZoomOut } from 'lucide-react';
+import { Crosshair, ZoomIn, ZoomOut, Eye } from 'lucide-react';
 import { Button } from '../ui/button';
 
 interface PolygonEntry {
@@ -26,8 +26,21 @@ export function MapVisualizer({
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<any>(null);
   const [polygonEntries, setPolygonEntries] = useState<PolygonEntry[]>([]);
+  const [opacity, setOpacity] = useState(0.35);
+  const opacityRef = useRef(0.35);
   const onParcelClickRef = useRef(onParcelClick);
   onParcelClickRef.current = onParcelClick;
+
+  const handleOpacityChange = useCallback((newOpacity: number) => {
+    setOpacity(newOpacity);
+    opacityRef.current = newOpacity;
+    polygonEntries.forEach(({ polygon }) => {
+      const isSelected = polygon.get('isSelected');
+      polygon.setOptions({
+        fillOpacity: isSelected ? Math.min(newOpacity + 0.15, 1) : newOpacity,
+      });
+    });
+  }, [polygonEntries]);
 
   useEffect(() => {
     if (!mapRef.current || !window.google || !window.google.maps) return;
@@ -96,7 +109,7 @@ export function MapVisualizer({
         strokeOpacity: 1,
         strokeWeight: 2,
         fillColor: colors.fill,
-        fillOpacity: 0.35,
+        fillOpacity: opacityRef.current,
         map: map,
       });
 
@@ -106,7 +119,7 @@ export function MapVisualizer({
 
       polygon.addListener('mouseover', () => {
         polygon.setOptions({
-          fillOpacity: 0.6,
+          fillOpacity: Math.min(opacityRef.current + 0.25, 1),
           strokeWeight: 3,
         });
       });
@@ -115,7 +128,7 @@ export function MapVisualizer({
         const isCurrentlySelected = polygon.get('isSelected');
         if (!isCurrentlySelected) {
           polygon.setOptions({
-            fillOpacity: 0.35,
+            fillOpacity: opacityRef.current,
             strokeWeight: 2,
           });
         }
@@ -137,7 +150,7 @@ export function MapVisualizer({
       polygon.set('isSelected', isSelected);
       polygon.setOptions({
         strokeWeight: isSelected ? 3 : 2,
-        fillOpacity: isSelected ? 0.5 : 0.35,
+        fillOpacity: isSelected ? Math.min(opacityRef.current + 0.15, 1) : opacityRef.current,
       });
     });
 
@@ -219,10 +232,10 @@ export function MapVisualizer({
         </Button>
       </div>
 
-      {/* Map Legend */}
+      {/* Map Legend + Opacity */}
       <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-sm rounded-lg shadow-lg p-3 z-10">
         <div className="text-xs font-semibold mb-2 text-muted-foreground uppercase">Legend</div>
-        <div className="space-y-1.5">
+        <div className="space-y-1.5 mb-3">
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded" style={{ backgroundColor: '#22C55E' }}></div>
             <span className="text-xs">Available</span>
@@ -235,6 +248,24 @@ export function MapVisualizer({
             <div className="w-4 h-4 rounded" style={{ backgroundColor: '#6B7280' }}></div>
             <span className="text-xs">Sold</span>
           </div>
+        </div>
+        <div className="border-t pt-2">
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-1">
+              <Eye className="h-3 w-3 text-muted-foreground" />
+              <span className="text-xs font-semibold text-muted-foreground uppercase">Opacity</span>
+            </div>
+            <span className="text-xs text-muted-foreground font-mono">{Math.round(opacity * 100)}%</span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={Math.round(opacity * 100)}
+            onChange={(e) => handleOpacityChange(Number(e.target.value) / 100)}
+            className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary"
+            style={{ accentColor: '#2563EB' }}
+          />
         </div>
       </div>
     </div>

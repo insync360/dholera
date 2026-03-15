@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Parcel } from '../../lib/types';
-import { Crosshair, ZoomIn, ZoomOut } from 'lucide-react';
+import { Crosshair, ZoomIn, ZoomOut, Eye } from 'lucide-react';
 import { Button } from '../ui/button';
 
 interface DemoMapVisualizerProps {
@@ -15,6 +15,7 @@ export function DemoMapVisualizer({
   onParcelClick,
 }: DemoMapVisualizerProps) {
   const [zoom, setZoom] = useState(15);
+  const [opacity, setOpacity] = useState(0.4);
 
   // Calculate dynamic bounds from parcel coordinates
   const calculateBounds = () => {
@@ -138,18 +139,18 @@ export function DemoMapVisualizer({
               <path
                 d={getParcelPath(parcel.coordinates)}
                 fill={colors.fill}
-                fillOpacity={isSelected ? 0.6 : 0.4}
+                fillOpacity={isSelected ? Math.min(opacity + 0.2, 1) : opacity}
                 stroke={colors.stroke}
                 strokeWidth={isSelected ? 0.3 : 0.15}
-                className="cursor-pointer transition-all hover:fill-opacity-60"
+                className="cursor-pointer transition-all"
                 onClick={() => onParcelClick(parcel)}
                 onMouseEnter={(e) => {
-                  e.currentTarget.setAttribute('fill-opacity', '0.6');
+                  e.currentTarget.setAttribute('fill-opacity', String(Math.min(opacity + 0.2, 1)));
                   e.currentTarget.setAttribute('stroke-width', '0.3');
                 }}
                 onMouseLeave={(e) => {
                   if (!isSelected) {
-                    e.currentTarget.setAttribute('fill-opacity', '0.4');
+                    e.currentTarget.setAttribute('fill-opacity', String(opacity));
                     e.currentTarget.setAttribute('stroke-width', '0.15');
                   }
                 }}
@@ -209,10 +210,10 @@ export function DemoMapVisualizer({
         </Button>
       </div>
 
-      {/* Map Legend */}
+      {/* Map Legend + Opacity */}
       <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-sm rounded-lg shadow-lg p-3 z-10">
         <div className="text-xs font-semibold mb-2 text-muted-foreground uppercase">Legend</div>
-        <div className="space-y-1.5">
+        <div className="space-y-1.5 mb-3">
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded" style={{ backgroundColor: '#22C55E' }}></div>
             <span className="text-xs">Available</span>
@@ -225,6 +226,24 @@ export function DemoMapVisualizer({
             <div className="w-4 h-4 rounded" style={{ backgroundColor: '#6B7280' }}></div>
             <span className="text-xs">Sold</span>
           </div>
+        </div>
+        <div className="border-t pt-2">
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-1">
+              <Eye className="h-3 w-3 text-muted-foreground" />
+              <span className="text-xs font-semibold text-muted-foreground uppercase">Opacity</span>
+            </div>
+            <span className="text-xs text-muted-foreground font-mono">{Math.round(opacity * 100)}%</span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={Math.round(opacity * 100)}
+            onChange={(e) => setOpacity(Number(e.target.value) / 100)}
+            className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+            style={{ accentColor: '#2563EB' }}
+          />
         </div>
       </div>
 
