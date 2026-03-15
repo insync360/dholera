@@ -39,7 +39,7 @@ export function ParcelDetailPanel({ parcel, onClose, onMoreDetails, onRequestVis
   };
 
   return (
-    <div className="fixed inset-x-0 bottom-0 md:absolute md:top-[73px] md:right-0 md:bottom-0 md:left-auto md:w-96 bg-white shadow-2xl z-30 flex flex-col max-h-[75vh] md:max-h-full rounded-t-xl md:rounded-none transition-transform duration-300 ease-in-out">
+    <div className="fixed inset-x-0 bottom-0 md:absolute md:top-[73px] md:right-0 md:bottom-0 md:left-auto md:w-96 bg-white shadow-2xl z-30 flex flex-col max-h-[75vh] md:max-h-full overflow-hidden rounded-t-xl md:rounded-none transition-transform duration-300 ease-in-out">
       <div className="shrink-0 bg-white border-b border-border p-4 flex items-center justify-between z-10 rounded-t-xl md:rounded-none">
         <h3>Parcel Details</h3>
         <Button variant="ghost" size="icon" onClick={onClose}>
@@ -47,7 +47,7 @@ export function ParcelDetailPanel({ parcel, onClose, onMoreDetails, onRequestVis
         </Button>
       </div>
 
-      <div className="overflow-y-auto flex-1 p-4 space-y-4">
+      <div className="overflow-y-auto flex-1 min-h-0 p-4 space-y-4">
         <div className="flex items-start justify-between">
           <div>
             <div className="text-sm text-muted-foreground">Parcel ID</div>
