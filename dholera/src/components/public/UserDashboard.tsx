@@ -78,7 +78,7 @@ export function UserDashboard({ isOpen, onClose, publicUser, parcels, onViewParc
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-2xl max-h-[85vh] overflow-y-auto overflow-x-hidden">
         <DialogHeader>
           <DialogTitle>My Dashboard</DialogTitle>
         </DialogHeader>
@@ -115,32 +115,28 @@ export function UserDashboard({ isOpen, onClose, publicUser, parcels, onViewParc
                       key={visit.id}
                       className="border border-amber-200 border-l-4 border-l-amber-400 rounded-lg p-4 bg-amber-50/50"
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-semibold">{visit.parcel_id}</span>
-                            {getVisitStatusBadge(visit.status)}
-                          </div>
-                          {parcel && (
-                            <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
-                              <span>{parcel.area_sq_m.toLocaleString()} sq.m</span>
-                              <span>₹{(parcel.price / 100000).toFixed(1)}L</span>
-                            </div>
-                          )}
-                          <div className="text-xs text-muted-foreground mt-2">
-                            Requested {new Date(visit.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                          </div>
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleViewOnMap(visit.parcel_id)}
-                          className="shrink-0"
-                        >
-                          <Eye className="h-3.5 w-3.5 mr-1" />
-                          View on Map
-                        </Button>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold break-all">{visit.parcel_id}</span>
+                        {getVisitStatusBadge(visit.status)}
                       </div>
+                      {parcel && (
+                        <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
+                          <span>{parcel.area_sq_m.toLocaleString()} sq.m</span>
+                          <span>₹{(parcel.price / 100000).toFixed(1)}L</span>
+                        </div>
+                      )}
+                      <div className="text-xs text-muted-foreground mt-2">
+                        Requested {new Date(visit.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleViewOnMap(visit.parcel_id)}
+                        className="mt-3 w-full sm:w-auto"
+                      >
+                        <Eye className="h-3.5 w-3.5 mr-1" />
+                        View on Map
+                      </Button>
                     </div>
                   );
                 })
@@ -162,41 +158,38 @@ export function UserDashboard({ isOpen, onClose, publicUser, parcels, onViewParc
                       key={item.id}
                       className="border border-rose-200 border-l-4 border-l-rose-400 rounded-lg p-4 bg-rose-50/50"
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-semibold">{item.parcel_id}</span>
-                            {parcel && getParcelStatusBadge(parcel.status)}
-                          </div>
-                          {parcel && (
-                            <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
-                              <span>{parcel.area_sq_m.toLocaleString()} sq.m</span>
-                              <span>₹{(parcel.price / 100000).toFixed(1)}L</span>
-                            </div>
-                          )}
-                          <div className="text-xs text-muted-foreground mt-2">
-                            <MapPin className="h-3 w-3 inline mr-1" />
-                            Added {new Date(item.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                          </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold break-all">{item.parcel_id}</span>
+                        {parcel && getParcelStatusBadge(parcel.status)}
+                      </div>
+                      {parcel && (
+                        <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
+                          <span>{parcel.area_sq_m.toLocaleString()} sq.m</span>
+                          <span>₹{(parcel.price / 100000).toFixed(1)}L</span>
                         </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleViewOnMap(item.parcel_id)}
-                          >
-                            <Eye className="h-3.5 w-3.5 mr-1" />
-                            View on Map
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleRemoveWishlist(item.parcel_id)}
-                            className="text-rose-500 hover:text-rose-600 hover:bg-rose-50"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
+                      )}
+                      <div className="text-xs text-muted-foreground mt-2">
+                        <MapPin className="h-3 w-3 inline mr-1" />
+                        Added {new Date(item.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </div>
+                      <div className="flex items-center gap-2 mt-3">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleViewOnMap(item.parcel_id)}
+                          className="flex-1 sm:flex-none"
+                        >
+                          <Eye className="h-3.5 w-3.5 mr-1" />
+                          View on Map
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveWishlist(item.parcel_id)}
+                          className="text-rose-500 hover:text-rose-600 hover:bg-rose-50"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
                       </div>
                     </div>
                   );
