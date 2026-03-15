@@ -412,11 +412,12 @@ export default function App() {
       // Delete the upload history record
       await uploadApi.deleteUpload(uploadId);
 
-      // Update UI — remove deleted items from local state
-      // Don't refetch: RLS may block the upload_history delete, so refetching
-      // would restore the rows we just removed from the UI
+      // Update UI immediately, then refetch to confirm
       setUploadHistory(prev => prev.filter(u => u.id !== uploadId));
       setParcels(prev => prev.filter(p => p.upload_id !== uploadId));
+
+      await loadParcels();
+      await loadAdminData();
 
       toast.success(`Deleted ${deletedCount} parcels and upload record`);
     } catch (err) {
@@ -441,11 +442,13 @@ export default function App() {
       }
     }
 
-    // Remove successful deletes from UI — don't refetch, RLS may block
-    // the upload_history delete so refetching would restore removed rows
+    // Update UI immediately, then refetch to confirm
     const successIds = uploadIds.filter(id => !failedIds.includes(id));
     setUploadHistory(prev => prev.filter(u => !successIds.includes(u.id)));
     setParcels(prev => prev.filter(p => !successIds.includes(p.upload_id)));
+
+    await loadParcels();
+    await loadAdminData();
 
     if (failedIds.length > 0) {
       const failedNames = failedIds.map(id => uploadHistory.find(u => u.id === id)?.filename || id);
