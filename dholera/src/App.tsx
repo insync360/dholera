@@ -408,20 +408,51 @@ export default function App() {
     try {
       // Delete parcels associated with this upload (using upload_id foreign key)
       const deletedCount = await uploadApi.deleteParcelsFromUpload(uploadId);
-      
+
       // Delete the upload history record
       await uploadApi.deleteUpload(uploadId);
-      
-      // Reload data
-      await loadParcels();
-      await loadAdminData();
-      
+
+      // Update UI — remove deleted items from local state
+      // Don't refetch: RLS may block the upload_history delete, so refetching
+      // would restore the rows we just removed from the UI
+      setUploadHistory(prev => prev.filter(u => u.id !== uploadId));
+      setParcels(prev => prev.filter(p => p.upload_id !== uploadId));
+
       toast.success(`Deleted ${deletedCount} parcels and upload record`);
     } catch (err) {
       const errorMessage = err instanceof ApiError
         ? `Failed to delete upload: ${err.message}`
         : 'Failed to delete upload. Please try again.';
       toast.error(errorMessage);
+    }
+  };
+
+  const handleBulkDeleteUploads = async (uploadIds: string[]) => {
+    let totalDeleted = 0;
+    const failedIds: string[] = [];
+
+    for (const uploadId of uploadIds) {
+      try {
+        const deletedCount = await uploadApi.deleteParcelsFromUpload(uploadId);
+        await uploadApi.deleteUpload(uploadId);
+        totalDeleted += deletedCount;
+      } catch {
+        failedIds.push(uploadId);
+      }
+    }
+
+    // Remove successful deletes from UI — don't refetch, RLS may block
+    // the upload_history delete so refetching would restore removed rows
+    const successIds = uploadIds.filter(id => !failedIds.includes(id));
+    setUploadHistory(prev => prev.filter(u => !successIds.includes(u.id)));
+    setParcels(prev => prev.filter(p => !successIds.includes(p.upload_id)));
+
+    if (failedIds.length > 0) {
+      const failedNames = failedIds.map(id => uploadHistory.find(u => u.id === id)?.filename || id);
+      toast.error(`Failed to delete: ${failedNames.join(', ')}`);
+    }
+    if (successIds.length > 0) {
+      toast.success(`Deleted ${successIds.length} uploads and ${totalDeleted} parcels`);
     }
   };
 
@@ -470,10 +501,11 @@ export default function App() {
             <ParcelEditor parcels={parcels} onParcelUpdate={handleParcelUpdate} />
           )}
           {adminView === 'history' && (
-            <VersionHistory 
-              versions={versions} 
+            <VersionHistory
+              versions={versions}
               uploadHistory={uploadHistory}
               onDeleteUpload={handleDeleteUpload}
+              onBulkDeleteUploads={handleBulkDeleteUploads}
             />
           )}
           {adminView === 'settings' && (
