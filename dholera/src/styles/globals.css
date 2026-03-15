@@ -191,3 +191,9 @@
 html {
   font-size: var(--font-size);
 }
+
+/* Google Maps parcel labels */
+.parcel-label {
+  text-shadow: 0 0 4px rgba(0,0,0,0.9), 0 0 2px rgba(0,0,0,0.7);
+  pointer-events: none;
+}

@@ -5,6 +5,7 @@ import { Button } from '../ui/button';
 
 interface PolygonEntry {
   polygon: any;
+  label: any;
   parcel: Parcel;
 }
 
@@ -62,8 +63,11 @@ export function MapVisualizer({
   useEffect(() => {
     if (!map || !window.google || !window.google.maps) return;
 
-    // Clear old polygons
-    polygonEntries.forEach(entry => entry.polygon.setMap(null));
+    // Clear old polygons and labels
+    polygonEntries.forEach(entry => {
+      entry.polygon.setMap(null);
+      if (entry.label) entry.label.setMap(null);
+    });
 
     // Fit map to all parcel bounds
     if (parcels.length > 0) {
@@ -134,7 +138,31 @@ export function MapVisualizer({
         }
       });
 
-      return { polygon, parcel };
+      // Create label at polygon center
+      let label: any = null;
+      if (parcel.coordinates && parcel.coordinates.length > 0) {
+        const avgLat = parcel.coordinates.reduce((s, c) => s + c.lat, 0) / parcel.coordinates.length;
+        const avgLng = parcel.coordinates.reduce((s, c) => s + c.lng, 0) / parcel.coordinates.length;
+
+        label = new window.google.maps.Marker({
+          position: { lat: avgLat, lng: avgLng },
+          map: map,
+          icon: {
+            path: window.google.maps.SymbolPath.CIRCLE,
+            scale: 0,
+          },
+          label: {
+            text: parcel.parcel_id,
+            color: '#FFFFFF',
+            fontSize: '10px',
+            fontWeight: 'bold',
+            className: 'parcel-label',
+          },
+          clickable: false,
+        });
+      }
+
+      return { polygon, label, parcel };
     });
 
     setPolygonEntries(newEntries);
