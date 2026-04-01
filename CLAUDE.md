@@ -29,7 +29,7 @@ No React Router. `App.tsx` manages all views via state:
 - `view: 'public' | 'login' | 'admin'` — top-level view switching
 - `adminView: 'dashboard' | 'upload' | 'editor' | 'history' | 'settings'` — admin sub-views
 
-All app state (parcels, filters, user, etc.) lives in `App.tsx` and is passed down as props.
+All app state (parcels, filters, user, etc.) lives in `App.tsx` and is passed down as props. View changes sync to the URL via `history.pushState()` to support browser back/forward navigation.
 
 ### Dual Map Modes
 
@@ -40,11 +40,14 @@ Auto-switches to demo mode if `VITE_GOOGLE_MAPS_API_KEY` is missing.
 
 ### API Layer (`src/lib/api.ts`)
 
-All backend calls go through four API objects that wrap Supabase client calls:
+All backend calls go through API objects that wrap Supabase client calls:
 - `parcelApi` — CRUD + search for parcels
 - `uploadApi` — KML/KMZ file upload (calls Supabase Edge Function at `/functions/v1/upload-kml`)
-- `versionApi` — version history
-- `authApi` — login/logout/getCurrentUser via Supabase Auth
+- `versionApi` — version history (rollback not yet implemented)
+- `authApi` — admin login/logout/getCurrentUser via Supabase Auth
+- `publicAuthApi` — public user signup/login/logout via Supabase Auth
+- `siteVisitApi` — site visit request creation and retrieval
+- `wishlistApi` — user wishlist management (add/remove/get)
 
 Custom `ApiError` class with status codes. Toast notifications for user feedback.
 
@@ -67,8 +70,8 @@ dholera/src/
 
 ### Supabase Backend
 
-- **Tables**: `parcels`, `user_profiles`, `data_versions`, `upload_history`
-- **Auth**: Email/password via Supabase Auth; roles (Admin/Editor/Viewer) stored in `user_profiles`
+- **Tables**: `parcels`, `user_profiles`, `data_versions`, `upload_history`, `site_visit_requests`, `dholera_users`, `wishlists`
+- **Auth**: Email/password via Supabase Auth; roles (Admin/Editor/Viewer) stored in `user_profiles`; first admin login auto-creates an Admin profile
 - **RLS**: Public read on parcels, authenticated write
 - **Region**: ap-south-1 (Mumbai)
 

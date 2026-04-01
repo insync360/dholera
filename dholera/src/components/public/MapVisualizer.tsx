@@ -31,6 +31,8 @@ export function MapVisualizer({
   const opacityRef = useRef(0.35);
   const onParcelClickRef = useRef(onParcelClick);
   onParcelClickRef.current = onParcelClick;
+  const polygonEntriesRef = useRef<PolygonEntry[]>([]);
+  const LABEL_ZOOM_THRESHOLD = 14;
 
   const handleOpacityChange = useCallback((newOpacity: number) => {
     setOpacity(newOpacity);
@@ -54,6 +56,13 @@ export function MapVisualizer({
       streetViewControl: false,
       fullscreenControl: false,
       zoomControl: false,
+    });
+
+    googleMap.addListener('zoom_changed', () => {
+      const zoom = googleMap.getZoom() || 0;
+      polygonEntriesRef.current.forEach(({ label }) => {
+        if (label) label.setMap(zoom >= LABEL_ZOOM_THRESHOLD ? googleMap : null);
+      });
     });
 
     setMap(googleMap);
@@ -146,7 +155,7 @@ export function MapVisualizer({
 
         label = new window.google.maps.Marker({
           position: { lat: avgLat, lng: avgLng },
-          map: map,
+          map: null,
           icon: {
             path: window.google.maps.SymbolPath.CIRCLE,
             scale: 0,
@@ -165,6 +174,13 @@ export function MapVisualizer({
       return { polygon, label, parcel };
     });
 
+    // Show labels only if already zoomed in past threshold
+    const currentZoom = map.getZoom() || 0;
+    newEntries.forEach(({ label }) => {
+      if (label) label.setMap(currentZoom >= LABEL_ZOOM_THRESHOLD ? map : null);
+    });
+
+    polygonEntriesRef.current = newEntries;
     setPolygonEntries(newEntries);
   }, [map, parcels]);
 
