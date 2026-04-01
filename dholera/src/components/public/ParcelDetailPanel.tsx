@@ -39,23 +39,31 @@ export function ParcelDetailPanel({ parcel, onClose, onMoreDetails, onRequestVis
   };
 
   return (
-    <div className="fixed inset-x-0 bottom-0 md:absolute md:top-[73px] md:right-0 md:bottom-0 md:left-auto md:w-96 bg-white shadow-2xl z-30 flex flex-col max-h-[75vh] md:max-h-full overflow-hidden rounded-t-xl md:rounded-none transition-transform duration-300 ease-in-out">
-      <div className="shrink-0 bg-white border-b border-border p-4 flex items-center justify-between z-10 rounded-t-xl md:rounded-none">
-        <h3>Parcel Details</h3>
-        <Button variant="ghost" size="icon" onClick={onClose}>
-          <X className="h-5 w-5" />
-        </Button>
+    <div className="fixed inset-x-3 bottom-3 md:inset-x-auto md:bottom-0 md:absolute md:top-[73px] md:right-0 md:left-auto md:w-96 bg-white border border-gray-200 shadow-2xl z-30 flex flex-col max-h-[82vh] md:max-h-full overflow-hidden rounded-2xl md:rounded-none transition-transform duration-300 ease-in-out">
+      {/* Drag handle — mobile only */}
+      <div className="md:hidden flex justify-center pt-2.5 pb-1 shrink-0">
+        <div className="w-9 h-1 bg-gray-300 rounded-full" />
+      </div>
+
+      {/* Header: parcel ID + close */}
+      <div className="shrink-0 bg-white border-b border-border px-4 pt-2 pb-3 md:p-4 flex items-start justify-between gap-2 z-10">
+        <div className="min-w-0">
+          <div className="text-xs text-muted-foreground">Parcel ID</div>
+          <div className="font-bold text-base leading-snug break-all">{parcel.parcel_id}</div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0 mt-0.5">
+          <Badge className={getStatusColor(parcel.status)}>{parcel.status}</Badge>
+          <button
+            onClick={onClose}
+            className="h-7 w-7 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
+            aria-label="Close"
+          >
+            <X className="h-4 w-4 text-gray-600" />
+          </button>
+        </div>
       </div>
 
       <div className="overflow-y-auto flex-1 min-h-0 p-4 space-y-4">
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="text-sm text-muted-foreground">Parcel ID</div>
-            <div className="text-xl md:text-2xl font-bold break-all">{parcel.parcel_id}</div>
-          </div>
-          <Badge className={getStatusColor(parcel.status)}>{parcel.status}</Badge>
-        </div>
-
         <div className="grid grid-cols-2 gap-4">
           <Card className="p-4">
             <div className="text-sm text-muted-foreground mb-1">Area</div>
