@@ -47,7 +47,7 @@ export function TopBar({
             <img
               src="/dholera360.png"
               alt="Dholera 360"
-              className="h-14 w-14 rounded-lg object-cover shrink-0"
+              className="h-10 w-10 rounded-lg object-cover shrink-0"
             />
           </div>
         </div>
