@@ -44,15 +44,11 @@ export function TopBar({
           )}
           
           <div className="flex items-center gap-2">
-            <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary shrink-0">
-              <span className="text-white font-bold">GAP</span>
-            </div>
-            {!isMobile && (
-              <div>
-                <div className="font-bold text-foreground">GAP Group</div>
-                <div className="text-xs text-muted-foreground">Dholera Smart City</div>
-              </div>
-            )}
+            <img
+              src="/dholera360.png"
+              alt="Dholera 360"
+              className="h-10 w-10 rounded-lg object-cover shrink-0"
+            />
           </div>
         </div>
 
