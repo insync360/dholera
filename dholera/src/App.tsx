@@ -221,7 +221,9 @@ export default function App() {
 
   // Apply filters
   const applyFilters = () => {
-    let filtered = [...parcels];
+    // Boundary parcels always stay visible — only filter non-boundary parcels
+    const boundaryParcels = parcels.filter(p => p.is_boundary);
+    let filtered = parcels.filter(p => !p.is_boundary);
 
     // Search filter
     if (searchQuery) {
@@ -252,7 +254,7 @@ export default function App() {
       filtered = filtered.filter((p) => filters.sizeCategory.includes(p.size_category));
     }
 
-    setFilteredParcels(filtered);
+    setFilteredParcels([...boundaryParcels, ...filtered]);
     setIsFilterOpen(false);
     toast.success(`Found ${filtered.length} parcels`);
   };
@@ -440,6 +442,11 @@ export default function App() {
   };
 
   const handleDeleteUpload = async (uploadId: string, _filename: string) => {
+    const upload = uploadHistory.find(u => u.id === uploadId);
+    if (upload?.is_default) {
+      toast.error('This is a default layer and cannot be deleted.');
+      return;
+    }
     try {
       // Delete parcels associated with this upload (using upload_id foreign key)
       const deletedCount = await uploadApi.deleteParcelsFromUpload(uploadId);
@@ -464,10 +471,12 @@ export default function App() {
   };
 
   const handleBulkDeleteUploads = async (uploadIds: string[]) => {
+    // Never delete default/protected layers
+    const safeIds = uploadIds.filter(id => !uploadHistory.find(u => u.id === id)?.is_default);
     let totalDeleted = 0;
     const failedIds: string[] = [];
 
-    for (const uploadId of uploadIds) {
+    for (const uploadId of safeIds) {
       try {
         const deletedCount = await uploadApi.deleteParcelsFromUpload(uploadId);
         await uploadApi.deleteUpload(uploadId);
@@ -478,7 +487,7 @@ export default function App() {
     }
 
     // Update UI immediately, then refetch to confirm
-    const successIds = uploadIds.filter(id => !failedIds.includes(id));
+    const successIds = safeIds.filter(id => !failedIds.includes(id));
     setUploadHistory(prev => prev.filter(u => !successIds.includes(u.id)));
     setParcels(prev => prev.filter(p => !successIds.includes(p.upload_id)));
 
@@ -496,13 +505,16 @@ export default function App() {
 
   // Apply search in real-time
   useEffect(() => {
+    const boundaryParcels = parcels.filter(p => p.is_boundary);
     if (searchQuery) {
       const filtered = parcels.filter(
         (p) =>
-          p.parcel_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          p.description.toLowerCase().includes(searchQuery.toLowerCase())
+          !p.is_boundary && (
+            p.parcel_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            p.description.toLowerCase().includes(searchQuery.toLowerCase())
+          )
       );
-      setFilteredParcels(filtered);
+      setFilteredParcels([...boundaryParcels, ...filtered]);
     } else if (filters.status.length === 0 && filters.sizeCategory.length === 0) {
       setFilteredParcels(parcels);
     }

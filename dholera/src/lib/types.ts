@@ -33,6 +33,7 @@ export interface UploadHistory {
   parcel_count: number;
   user: string;
   status: 'success' | 'error' | 'pending';
+  is_default?: boolean;
 }
 
 export interface FilterOptions {

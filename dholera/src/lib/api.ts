@@ -190,6 +190,7 @@ export const uploadApi = {
       parcel_count: row.parcel_count,
       user: row.user_email,
       status: row.status,
+      is_default: (row.is_default as boolean) || false,
     }));
   },
 

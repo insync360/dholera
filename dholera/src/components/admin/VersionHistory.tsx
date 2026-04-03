@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { RotateCcw, Download, Eye, Trash2, FileUp, Calendar, User, Layers, X } from 'lucide-react';
+import { RotateCcw, Download, Eye, Trash2, FileUp, Calendar, User, Layers, X, Lock } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 import { Badge } from '../ui/badge';
@@ -44,29 +44,34 @@ export function VersionHistory({ versions, uploadHistory, onDeleteUpload, onBulk
     });
   };
 
+  const deletableUploads = uploadHistory.filter(u => !u.is_default);
+
   const toggleSelectAll = () => {
-    if (selected.size === uploadHistory.length) {
+    if (selected.size === deletableUploads.length) {
       setSelected(new Set());
     } else {
-      setSelected(new Set(uploadHistory.map(u => u.id)));
+      setSelected(new Set(deletableUploads.map(u => u.id)));
     }
   };
 
   const handleBulkDelete = async () => {
-    const count = selected.size;
+    const deletableIds = Array.from(selected).filter(
+      id => !uploadHistory.find(u => u.id === id)?.is_default
+    );
+    const count = deletableIds.length;
     const totalParcels = uploadHistory
-      .filter(u => selected.has(u.id))
+      .filter(u => deletableIds.includes(u.id))
       .reduce((sum, u) => sum + u.parcel_count, 0);
 
     if (!confirm(`Delete ${count} upload${count > 1 ? 's' : ''} and ${totalParcels} associated parcels?`)) return;
 
     setDeleting(true);
-    await onBulkDeleteUploads(Array.from(selected));
+    await onBulkDeleteUploads(deletableIds);
     setSelected(new Set());
     setDeleting(false);
   };
 
-  const allSelected = uploadHistory.length > 0 && selected.size === uploadHistory.length;
+  const allSelected = deletableUploads.length > 0 && selected.size === deletableUploads.length;
   const someSelected = selected.size > 0;
 
   return (
@@ -82,7 +87,7 @@ export function VersionHistory({ versions, uploadHistory, onDeleteUpload, onBulk
       <div className="mb-10">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">Upload History</h2>
-          {uploadHistory.length > 1 && (
+          {deletableUploads.length > 1 && (
             <Button
               variant="ghost"
               size="sm"
@@ -133,7 +138,7 @@ export function VersionHistory({ versions, uploadHistory, onDeleteUpload, onBulk
                 className={`overflow-hidden transition-colors cursor-pointer ${
                   isSelected ? 'ring-2 ring-red-300 bg-red-50/50' : ''
                 }`}
-                onClick={() => toggleSelect(upload.id)}
+                onClick={() => !upload.is_default && toggleSelect(upload.id)}
               >
                 <div className="flex items-stretch">
                   {/* Color accent bar */}
@@ -147,21 +152,27 @@ export function VersionHistory({ versions, uploadHistory, onDeleteUpload, onBulk
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 flex-1 min-w-0">
                     {/* Checkbox + File info */}
                     <div className="flex items-start gap-3 min-w-0">
-                      {/* Checkbox */}
-                      <div
-                        className={`mt-0.5 h-5 w-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
-                          isSelected
-                            ? 'bg-red-500 border-red-500 text-white'
-                            : 'border-gray-300 hover:border-gray-400'
-                        }`}
-                        onClick={(e) => { e.stopPropagation(); toggleSelect(upload.id); }}
-                      >
-                        {isSelected && (
-                          <svg className="h-3 w-3" viewBox="0 0 12 12" fill="none">
-                            <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        )}
-                      </div>
+                      {/* Checkbox — hidden for default/protected uploads */}
+                      {!upload.is_default ? (
+                        <div
+                          className={`mt-0.5 h-5 w-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                            isSelected
+                              ? 'bg-red-500 border-red-500 text-white'
+                              : 'border-gray-300 hover:border-gray-400'
+                          }`}
+                          onClick={(e) => { e.stopPropagation(); toggleSelect(upload.id); }}
+                        >
+                          {isSelected && (
+                            <svg className="h-3 w-3" viewBox="0 0 12 12" fill="none">
+                              <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="mt-0.5 h-5 w-5 flex items-center justify-center flex-shrink-0">
+                          <Lock className="h-3.5 w-3.5 text-muted-foreground" />
+                        </div>
+                      )}
 
                       <div className={`hidden sm:flex h-10 w-10 rounded-lg items-center justify-center flex-shrink-0 ${
                         upload.status === 'success' ? 'bg-emerald-50 text-emerald-600' :
@@ -201,8 +212,8 @@ export function VersionHistory({ versions, uploadHistory, onDeleteUpload, onBulk
                       </div>
                     </div>
 
-                    {/* Delete button (single) */}
-                    {!someSelected && (
+                    {/* Delete button (single) — hidden for default uploads */}
+                    {!someSelected && !upload.is_default && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -212,6 +223,12 @@ export function VersionHistory({ versions, uploadHistory, onDeleteUpload, onBulk
                         <Trash2 className="h-4 w-4 sm:mr-1.5" />
                         <span className="sm:inline hidden">Delete</span>
                       </Button>
+                    )}
+                    {!someSelected && upload.is_default && (
+                      <span className="text-xs text-muted-foreground flex items-center gap-1 px-2 flex-shrink-0 self-start sm:self-center">
+                        <Lock className="h-3 w-3" />
+                        Default
+                      </span>
                     )}
                   </div>
                 </div>
