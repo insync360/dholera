@@ -38,6 +38,7 @@ export function MapVisualizer({
     setOpacity(newOpacity);
     opacityRef.current = newOpacity;
     polygonEntries.forEach(({ polygon }) => {
+      if (polygon.get('isBoundary')) return;
       const isSelected = polygon.get('isSelected');
       polygon.setOptions({
         fillOpacity: isSelected ? Math.min(newOpacity + 0.15, 1) : newOpacity,
@@ -115,22 +116,26 @@ export function MapVisualizer({
 
     const newEntries = parcels.map((parcel) => {
       const colors = getColor(parcel.status, parcel.color);
+      const isBoundary = parcel.is_boundary === true;
 
       const polygon = new window.google.maps.Polygon({
         paths: parcel.coordinates,
-        strokeColor: colors.stroke,
+        strokeColor: isBoundary ? '#000000' : colors.stroke,
         strokeOpacity: 1,
-        strokeWeight: 2,
+        strokeWeight: isBoundary ? 3 : 2,
         fillColor: colors.fill,
-        fillOpacity: opacityRef.current,
+        fillOpacity: isBoundary ? 0 : opacityRef.current,
         map: map,
       });
+
+      polygon.set('isBoundary', isBoundary);
 
       polygon.addListener('click', () => {
         onParcelClickRef.current(parcel);
       });
 
       polygon.addListener('mouseover', () => {
+        if (isBoundary) return;
         polygon.setOptions({
           fillOpacity: Math.min(opacityRef.current + 0.25, 1),
           strokeWeight: 3,
@@ -138,6 +143,7 @@ export function MapVisualizer({
       });
 
       polygon.addListener('mouseout', () => {
+        if (isBoundary) return;
         const isCurrentlySelected = polygon.get('isSelected');
         if (!isCurrentlySelected) {
           polygon.setOptions({

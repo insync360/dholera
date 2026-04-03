@@ -14,6 +14,7 @@ export interface Parcel {
   landmark_distance?: string;
   size_category: 'Small' | 'Medium' | 'Large';
   color?: string;
+  is_boundary?: boolean;
 }
 
 export interface DataVersion {

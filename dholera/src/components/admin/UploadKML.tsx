@@ -79,6 +79,7 @@ export function UploadKML({ uploadHistory, onUploadSuccess }: UploadKMLProps) {
   const [uploadedParcels, setUploadedParcels] = useState<Parcel[]>([]);
   const [uploadedFile, setUploadedFile] = useState<string | null>(null);
   const [parcelColor, setParcelColor] = useState('#22C55E');
+  const [isBoundaryLayer, setIsBoundaryLayer] = useState(false);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -148,11 +149,14 @@ export function UploadKML({ uploadHistory, onUploadSuccess }: UploadKMLProps) {
     setIsPublishing(true);
 
     try {
-      // Apply color to all uploaded parcels
+      // Apply color / boundary flag to all uploaded parcels
       let updated = 0;
       for (const parcel of uploadedParcels) {
         try {
-          await parcelApi.update(parcel.id, { color: parcelColor });
+          await parcelApi.update(parcel.id, {
+            color: isBoundaryLayer ? undefined : parcelColor,
+            is_boundary: isBoundaryLayer,
+          });
           updated++;
         } catch {
           // continue with remaining parcels
@@ -168,6 +172,7 @@ export function UploadKML({ uploadHistory, onUploadSuccess }: UploadKMLProps) {
       setUploadedFile(null);
       setUploadProgress(0);
       setParcelColor('#22C55E');
+      setIsBoundaryLayer(false);
 
       if (onUploadSuccess) {
         onUploadSuccess();
@@ -293,7 +298,22 @@ export function UploadKML({ uploadHistory, onUploadSuccess }: UploadKMLProps) {
                 <p className="text-sm text-muted-foreground mb-4">
                   Choose a color for all {uploadedParcels.length} parcels in this upload. This color will be shown on the map.
                 </p>
-                <div className="flex items-start gap-6">
+
+                {/* Boundary layer toggle */}
+                <label className="flex items-center gap-3 mb-4 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={isBoundaryLayer}
+                    onChange={e => setIsBoundaryLayer(e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300 accent-primary cursor-pointer"
+                  />
+                  <div>
+                    <span className="text-sm font-medium">Boundary layer (outline only)</span>
+                    <p className="text-xs text-muted-foreground">No fill — shows only a black border on the map</p>
+                  </div>
+                </label>
+
+                <div className={`flex items-start gap-6 transition-opacity ${isBoundaryLayer ? 'opacity-40 pointer-events-none' : ''}`}>
                   <div className="flex-1">
                     <Label className="text-xs text-muted-foreground mb-2 block">Select color</Label>
                     <ColorPicker color={parcelColor} onChange={setParcelColor} />
