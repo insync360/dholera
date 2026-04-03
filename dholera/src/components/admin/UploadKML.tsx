@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { Upload, FileText, CheckCircle, AlertCircle, Eye, Play, Palette } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
@@ -22,8 +22,6 @@ const PRESET_COLORS = [
 ];
 
 function ColorPicker({ color, onChange }: { color: string; onChange: (color: string) => void }) {
-  const inputRef = useRef<HTMLInputElement>(null);
-
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap gap-1.5">
@@ -39,24 +37,22 @@ function ColorPicker({ color, onChange }: { color: string; onChange: (color: str
             title={c}
           />
         ))}
-        <button
-          type="button"
-          className={`w-7 h-7 rounded-md border-2 border-dashed border-gray-300 flex items-center justify-center hover:border-gray-400 transition-colors ${
-            color && !PRESET_COLORS.includes(color) ? 'ring-1 ring-foreground' : ''
+        {/* Custom color — input sits directly on top so user gesture hits it */}
+        <div
+          className={`relative w-7 h-7 rounded-md border-2 border-dashed border-gray-300 flex items-center justify-center hover:border-gray-400 transition-colors cursor-pointer ${
+            color && !PRESET_COLORS.includes(color) ? 'ring-1 ring-foreground border-solid' : ''
           }`}
-          style={color && !PRESET_COLORS.includes(color) ? { backgroundColor: color, borderStyle: 'solid' } : {}}
-          onClick={() => inputRef.current?.click()}
+          style={color && !PRESET_COLORS.includes(color) ? { backgroundColor: color } : {}}
           title="Custom color"
         >
-          {(!color || PRESET_COLORS.includes(color)) && <Palette className="h-3.5 w-3.5 text-gray-400" />}
-        </button>
-        <input
-          ref={inputRef}
-          type="color"
-          className="sr-only"
-          value={color || '#22C55E'}
-          onChange={(e) => onChange(e.target.value)}
-        />
+          {(!color || PRESET_COLORS.includes(color)) && <Palette className="h-3.5 w-3.5 text-gray-400 pointer-events-none" />}
+          <input
+            type="color"
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            value={color || '#22C55E'}
+            onChange={(e) => onChange(e.target.value)}
+          />
+        </div>
       </div>
       <div className="flex items-center gap-2">
         <div className="w-4 h-4 rounded border" style={{ backgroundColor: color }} />
