@@ -28,11 +28,10 @@ interface ParsedParcel {
 function parseCoordinateBlock(coordString: string): Coordinate[] {
   const coordinates: Coordinate[] = [];
   const coordPairs = coordString.trim().split(/\s+/).filter(s => s.length > 0);
-
   for (const pair of coordPairs) {
     const parts = pair.split(',');
     if (parts.length >= 2) {
-      // KML format: lng,lat,alt — parts[0]=lng, parts[1]=lat
+      // KML format: lng,lat,alt
       const lng = parseFloat(parts[0]);
       const lat = parseFloat(parts[1]);
       if (!isNaN(lat) && !isNaN(lng)) {
@@ -40,7 +39,6 @@ function parseCoordinateBlock(coordString: string): Coordinate[] {
       }
     }
   }
-
   return coordinates;
 }
 
@@ -50,7 +48,6 @@ function parseKML(kmlContent: string, filePrefix: string): ParsedParcel[] {
   const placemarkRegex = /<Placemark[^>]*>([\s\S]*?)<\/Placemark>/gi;
   let placemarkMatch;
   let index = 1;
-
   const timestamp = Date.now().toString(36).toUpperCase();
 
   while ((placemarkMatch = placemarkRegex.exec(kmlContent)) !== null) {
@@ -62,34 +59,47 @@ function parseKML(kmlContent: string, filePrefix: string): ParsedParcel[] {
     const descMatch = placemark.match(/<description>([^<]*)<\/description>/i);
     const description = descMatch ? descMatch[1].trim() : '';
 
-    // Collect ALL <coordinates> blocks — handles MultiGeometry, multiple Polygons,
-    // and outerBoundaryIs / innerBoundaryIs structures.
-    // We only care about outer rings; inner rings (holes) are skipped if they
-    // come after the first <coordinates> inside a <Polygon> — but since we create
-    // a parcel per block we keep outer rings only by skipping tiny/degenerate ones.
-    const coordRegex = /<coordinates>([\s\S]*?)<\/coordinates>/gi;
-    let coordMatch;
-    let coordsFoundInPlacemark = false;
+    // Only parse <Polygon> elements.
+    // This intentionally skips <LineString>, <Point>, and other non-polygon
+    // geometries so that road centrelines etc. are not turned into parcels.
+    const polygonRegex = /<Polygon[^>]*>([\s\S]*?)<\/Polygon>/gi;
+    let polygonMatch;
+    let polygonsFound = false;
 
-    while ((coordMatch = coordRegex.exec(placemark)) !== null) {
-      const coordinates = parseCoordinateBlock(coordMatch[1]);
+    while ((polygonMatch = polygonRegex.exec(placemark)) !== null) {
+      const polygonContent = polygonMatch[1];
 
-      // Need at least 3 points to form a polygon
+      // Prefer outerBoundaryIs (standard KML) — ignore inner rings (holes)
+      let coordStr: string | null = null;
+      const outerMatch = polygonContent.match(
+        /<outerBoundaryIs[^>]*>([\s\S]*?)<\/outerBoundaryIs>/i
+      );
+      if (outerMatch) {
+        const cm = outerMatch[1].match(/<coordinates>([\s\S]*?)<\/coordinates>/i);
+        if (cm) coordStr = cm[1];
+      }
+
+      // Fallback: any <coordinates> directly inside the Polygon
+      if (!coordStr) {
+        const cm = polygonContent.match(/<coordinates>([\s\S]*?)<\/coordinates>/i);
+        if (cm) coordStr = cm[1];
+      }
+
+      if (!coordStr) continue;
+
+      const coordinates = parseCoordinateBlock(coordStr);
       if (coordinates.length < 3) continue;
 
-      coordsFoundInPlacemark = true;
+      polygonsFound = true;
 
       const area = calculatePolygonArea(coordinates);
-
       let sizeCategory = 'Medium';
       if (area < 2000) sizeCategory = 'Small';
       else if (area > 5000) sizeCategory = 'Large';
 
       const price = Math.round(area * 3000);
-
-      // Always include index so IDs are unique even when names repeat or
-      // a single Placemark expands to multiple parcels via MultiGeometry
       const indexPad = String(index).padStart(3, '0');
+
       let parcelId: string;
       if (name && name.match(/^[A-Z0-9-]+$/i)) {
         parcelId = `${name}-${timestamp}-${indexPad}`;
@@ -113,8 +123,7 @@ function parseKML(kmlContent: string, filePrefix: string): ParsedParcel[] {
       index++;
     }
 
-    // Placemark had no usable coordinate blocks — still advance index
-    if (!coordsFoundInPlacemark) index++;
+    if (!polygonsFound) index++;
   }
 
   return parcels;
@@ -122,11 +131,9 @@ function parseKML(kmlContent: string, filePrefix: string): ParsedParcel[] {
 
 function calculatePolygonArea(coords: Coordinate[]): number {
   if (coords.length < 3) return 0;
-
   const R = 6371000;
   let area = 0;
   const n = coords.length;
-
   for (let i = 0; i < n; i++) {
     const j = (i + 1) % n;
     const lat1 = coords[i].lat * Math.PI / 180;
@@ -135,25 +142,18 @@ function calculatePolygonArea(coords: Coordinate[]): number {
     const lng2 = coords[j].lng * Math.PI / 180;
     area += (lng2 - lng1) * (2 + Math.sin(lat1) + Math.sin(lat2));
   }
-
-  area = Math.abs(area * R * R / 2);
-  return area;
+  return Math.abs(area * R * R / 2);
 }
 
 function extractKMLFromKMZ(kmzData: Uint8Array): string {
   try {
     const unzipped = unzipSync(kmzData);
-
     for (const [filename, data] of Object.entries(unzipped)) {
       if (filename.toLowerCase().endsWith('.kml')) {
         return strFromU8(data as Uint8Array);
       }
     }
-
-    if (unzipped['doc.kml']) {
-      return strFromU8(unzipped['doc.kml']);
-    }
-
+    if (unzipped['doc.kml']) return strFromU8(unzipped['doc.kml']);
     return '';
   } catch (error) {
     console.error('KMZ extraction error:', error);
@@ -195,9 +195,7 @@ Deno.serve(async (req: Request) => {
 
     if (fileName.endsWith('.kmz')) {
       const arrayBuffer = await file.arrayBuffer();
-      const kmzData = new Uint8Array(arrayBuffer);
-      kmlContent = extractKMLFromKMZ(kmzData);
-
+      kmlContent = extractKMLFromKMZ(new Uint8Array(arrayBuffer));
       if (!kmlContent) {
         return new Response(
           JSON.stringify({ error: 'Could not find KML file inside KMZ archive' }),
@@ -212,7 +210,7 @@ Deno.serve(async (req: Request) => {
 
     if (parcels.length === 0) {
       return new Response(
-        JSON.stringify({ error: 'No valid parcels found in KML file' }),
+        JSON.stringify({ error: 'No valid polygon parcels found in KML file' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -223,12 +221,11 @@ Deno.serve(async (req: Request) => {
 
     const authHeader = req.headers.get('authorization');
     let userEmail = 'anonymous';
-
     if (authHeader) {
-      const { data: { user } } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
-      if (user?.email) {
-        userEmail = user.email;
-      }
+      const { data: { user } } = await supabase.auth.getUser(
+        authHeader.replace('Bearer ', '')
+      );
+      if (user?.email) userEmail = user.email;
     }
 
     const { data: uploadRecord, error: uploadError } = await supabase
@@ -243,7 +240,6 @@ Deno.serve(async (req: Request) => {
       .single();
 
     if (uploadError) {
-      console.error('Upload history error:', uploadError);
       return new Response(
         JSON.stringify({ error: `Failed to create upload record: ${uploadError.message}` }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -270,7 +266,6 @@ Deno.serve(async (req: Request) => {
       .select();
 
     if (insertError) {
-      console.error('Insert error:', insertError);
       await supabase.from('upload_history').delete().eq('id', uploadId);
       return new Response(
         JSON.stringify({ error: `Database error: ${insertError.message}` }),
