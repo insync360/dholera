@@ -42,6 +42,38 @@ function parseCoordinateBlock(coordString: string): Coordinate[] {
   return coordinates;
 }
 
+function makeParcel(
+  coordinates: Coordinate[],
+  name: string,
+  description: string,
+  filePrefix: string,
+  timestamp: string,
+  index: number,
+): ParsedParcel {
+  const area = calculatePolygonArea(coordinates);
+  let sizeCategory = 'Medium';
+  if (area < 2000) sizeCategory = 'Small';
+  else if (area > 5000) sizeCategory = 'Large';
+
+  const indexPad = String(index).padStart(3, '0');
+  const parcelId = (name && name.match(/^[A-Z0-9-]+$/i))
+    ? `${name}-${timestamp}-${indexPad}`
+    : `${filePrefix}-${timestamp}-${indexPad}`;
+
+  return {
+    parcel_id: parcelId,
+    status: 'Available',
+    area_sq_m: Math.round(area),
+    price: Math.round(area * 3000),
+    coordinates,
+    notes: '',
+    documents: [],
+    description: description || 'Parcel from KML import',
+    landmark_distance: '',
+    size_category: sizeCategory,
+  };
+}
+
 function parseKML(kmlContent: string, filePrefix: string): ParsedParcel[] {
   const parcels: ParsedParcel[] = [];
 
@@ -59,9 +91,9 @@ function parseKML(kmlContent: string, filePrefix: string): ParsedParcel[] {
     const descMatch = placemark.match(/<description>([^<]*)<\/description>/i);
     const description = descMatch ? descMatch[1].trim() : '';
 
-    // Only parse <Polygon> elements.
-    // This intentionally skips <LineString>, <Point>, and other non-polygon
-    // geometries so that road centrelines etc. are not turned into parcels.
+    // ── Step 1: Standard <Polygon> elements ──────────────────────────────
+    // Handles: <Polygon><outerBoundaryIs><LinearRing><coordinates>
+    // Also handles MultiGeometry containing multiple <Polygon> elements.
     const polygonRegex = /<Polygon[^>]*>([\s\S]*?)<\/Polygon>/gi;
     let polygonMatch;
     let polygonsFound = false;
@@ -69,7 +101,7 @@ function parseKML(kmlContent: string, filePrefix: string): ParsedParcel[] {
     while ((polygonMatch = polygonRegex.exec(placemark)) !== null) {
       const polygonContent = polygonMatch[1];
 
-      // Prefer outerBoundaryIs (standard KML) — ignore inner rings (holes)
+      // Prefer outerBoundaryIs — ignore inner rings (holes)
       let coordStr: string | null = null;
       const outerMatch = polygonContent.match(
         /<outerBoundaryIs[^>]*>([\s\S]*?)<\/outerBoundaryIs>/i
@@ -78,52 +110,51 @@ function parseKML(kmlContent: string, filePrefix: string): ParsedParcel[] {
         const cm = outerMatch[1].match(/<coordinates>([\s\S]*?)<\/coordinates>/i);
         if (cm) coordStr = cm[1];
       }
-
       // Fallback: any <coordinates> directly inside the Polygon
       if (!coordStr) {
         const cm = polygonContent.match(/<coordinates>([\s\S]*?)<\/coordinates>/i);
         if (cm) coordStr = cm[1];
       }
-
       if (!coordStr) continue;
 
       const coordinates = parseCoordinateBlock(coordStr);
       if (coordinates.length < 3) continue;
 
       polygonsFound = true;
-
-      const area = calculatePolygonArea(coordinates);
-      let sizeCategory = 'Medium';
-      if (area < 2000) sizeCategory = 'Small';
-      else if (area > 5000) sizeCategory = 'Large';
-
-      const price = Math.round(area * 3000);
-      const indexPad = String(index).padStart(3, '0');
-
-      let parcelId: string;
-      if (name && name.match(/^[A-Z0-9-]+$/i)) {
-        parcelId = `${name}-${timestamp}-${indexPad}`;
-      } else {
-        parcelId = `${filePrefix}-${timestamp}-${indexPad}`;
-      }
-
-      parcels.push({
-        parcel_id: parcelId,
-        status: 'Available',
-        area_sq_m: Math.round(area),
-        price,
-        coordinates,
-        notes: '',
-        documents: [],
-        description: description || 'Parcel from KML import',
-        landmark_distance: '',
-        size_category: sizeCategory,
-      });
-
+      parcels.push(makeParcel(coordinates, name, description, filePrefix, timestamp, index));
       index++;
     }
 
-    if (!polygonsFound) index++;
+    // If standard Polygon parsing succeeded, move to the next Placemark
+    if (polygonsFound) continue;
+
+    // ── Step 2: Fallback — bare <coordinates> blocks ──────────────────────
+    // Some KML exporters (CAD tools, etc.) omit the <Polygon> wrapper and
+    // put coordinates directly inside <Placemark> or <LinearRing>.
+    // GUARD: skip if the Placemark contains <LineString> or <Point> — those
+    // geometries also have <coordinates> but must not become polygon parcels.
+    const hasLineString = /<LineString[^>]*>/i.test(placemark);
+    const hasPoint = /<Point[^>]*>/i.test(placemark);
+
+    if (hasLineString || hasPoint) {
+      index++;
+      continue;
+    }
+
+    const coordRegex = /<coordinates>([\s\S]*?)<\/coordinates>/gi;
+    let coordMatch;
+    let bareFound = false;
+
+    while ((coordMatch = coordRegex.exec(placemark)) !== null) {
+      const coordinates = parseCoordinateBlock(coordMatch[1]);
+      if (coordinates.length < 3) continue;
+
+      bareFound = true;
+      parcels.push(makeParcel(coordinates, name, description, filePrefix, timestamp, index));
+      index++;
+    }
+
+    if (!bareFound) index++;
   }
 
   return parcels;
