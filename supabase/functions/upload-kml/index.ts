@@ -131,12 +131,15 @@ function parseKML(kmlContent: string, filePrefix: string): ParsedParcel[] {
     // ── Step 2: Fallback — bare <coordinates> blocks ──────────────────────
     // Some KML exporters (CAD tools, etc.) omit the <Polygon> wrapper and
     // put coordinates directly inside <Placemark> or <LinearRing>.
-    // GUARD: skip if the Placemark contains <LineString> or <Point> — those
-    // geometries also have <coordinates> but must not become polygon parcels.
+    // GUARD: skip if the Placemark contains <LineString> — those geometries
+    // have multi-point <coordinates> that must not become polygon parcels.
+    // NOTE: <Point> is NOT guarded here because a Point's <coordinates> block
+    // has only 1 coordinate pair, which is naturally filtered by length < 3.
+    // Many KML exporters include a <Point> for label placement alongside
+    // polygon coordinates (e.g. <MultiGeometry><Point>…</Point><LinearRing>…</LinearRing>).
     const hasLineString = /<LineString[^>]*>/i.test(placemark);
-    const hasPoint = /<Point[^>]*>/i.test(placemark);
 
-    if (hasLineString || hasPoint) {
+    if (hasLineString) {
       index++;
       continue;
     }
